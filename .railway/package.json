@@ -1,0 +1,8 @@
+{
+  "name": "lotz-railway",
+  "private": true,
+  "description": "Railway's TypeScript SDK for .railway/railway.ts (kept apart from the pnpm workspace)",
+  "devDependencies": {
+    "railway": "3.17.0"
+  }
+}
