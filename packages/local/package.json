@@ -1,0 +1,30 @@
+{
+  "name": "@lotz/local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-validator setup: test mint, initialize, shards, lookup table, funded wallets. Never for mainnet.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "localnet": "tsx src/cli/localnet.ts",
+    "fund": "tsx src/cli/fund.ts"
+  },
+  "dependencies": {
+    "@lotz/sdk": "workspace:*",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "@lotz/imaging": "workspace:*",
+    "@lotz/storage": "workspace:*",
+    "@lotz/db": "workspace:*",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15",
+    "pg": "8.23.1",
+    "@lotz/brand": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

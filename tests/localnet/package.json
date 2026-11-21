@@ -1,0 +1,17 @@
+{
+  "name": "@lotz/localnet-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Smoke run against a real solana-test-validator; started by `anchor test`.",
+  "scripts": {
+    "test:localnet": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lotz/local": "workspace:*",
+    "@lotz/sdk": "workspace:*",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0"
+  }
+}

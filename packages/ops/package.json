@@ -1,0 +1,18 @@
+{
+  "name": "@lotz/ops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Owner tools for a real cluster: launch plan (dry run by default), initialize, shards, lookup table, pause.",
+  "scripts": {
+    "launch": "tsx src/launch.ts",
+    "pause": "tsx src/pause.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lotz/sdk": "workspace:*",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "tsx": "4.23.15"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@lotz/brand",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Logo star and the three eyes, as SVG and as cell matrices (from lotz-brief/assets).",
+  "exports": {
+    ".": "./src/index.ts",
+    "./assets/*": "./assets/*"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* Design system (brief §6). The interface is strictly black and white; colour only comes from ads on the board. */
+@theme {
+  --color-paper: #ffffff;
+  --color-grid: #dedede;
+  --color-grid-strong: #c4c4c4;
+  --color-ink: #0a0a0a;
+  --color-mute: #6b6b6b;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --radius-none: 0;
+}
+
+:root {
+  --paper: #ffffff;
+  --grid: #dedede;
+  --grid-strong: #c4c4c4;
+  --ink: #0a0a0a;
+  --mute: #6b6b6b;
+  /* where the background grid starts (set by the board so it sits on the grid without a seam) */
+  --grid-x: 0px;
+  --grid-y: 0px;
+  color-scheme: light;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The infinite grid: 10 px cells, every 10th line stronger, like the board's shards. */
+body {
+  min-height: 100dvh;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' shape-rendering='crispEdges'%3E%3Cpath d='M0 10.5H100M0 20.5H100M0 30.5H100M0 40.5H100M0 50.5H100M0 60.5H100M0 70.5H100M0 80.5H100M0 90.5H100M10.5 0V100M20.5 0V100M30.5 0V100M40.5 0V100M50.5 0V100M60.5 0V100M70.5 0V100M80.5 0V100M90.5 0V100' stroke='%23DEDEDE' stroke-width='1'/%3E%3Cpath d='M0 .5H100M.5 0V100' stroke='%23C4C4C4' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+  background-position: var(--grid-x) var(--grid-y);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Components live in a layer so Tailwind utilities (px-0, h-7, ...) can override them. */
+@layer components {
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Panels and buttons: square, 2 px ink border, hard 4 px shadow with no blur. */
+  .panel {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 3px 3px 0 var(--ink);
+    cursor: pointer;
+    user-select: none;
+  }
+  .btn:hover:not(:disabled) {
+    background: #f2f2f2;
+  }
+  .btn:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: none;
+  }
+  .btn:disabled {
+    color: var(--mute);
+    border-color: var(--mute);
+    box-shadow: 3px 3px 0 var(--mute);
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #2a2a2a;
+  }
+  .btn-primary:disabled {
+    background: var(--mute);
+    color: var(--paper);
+  }
+  .btn-sm {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 13px;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+
+  .field {
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    font-size: 14px;
+    outline: none;
+  }
+  .field:focus-visible {
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  a.link {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  a.link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* Hidden ads: the grid/paper checker. */
+  .hidden-pattern {
+    background-color: var(--paper);
+    background-image: conic-gradient(var(--grid) 25%, transparent 0 50%, var(--grid) 0 75%, transparent 0);
+    background-size: 2px 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,1753 @@
+{
+  "address": "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap",
+  "metadata": {
+    "name": "lotz",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Lotz: a 1000x1000 pixel board on Solana. Lots are paid in one token; takeovers cost 1.5x and refund the previous owner; the rest is locked for a year."
+  },
+  "instructions": [
+    {
+      "name": "buy",
+      "docs": [
+        "Buys a rectangle of lots: free ones at the tier price, taken ones at 1.5x. Creates the ad."
+      ],
+      "discriminator": [
+        102,
+        6,
+        61,
+        18,
+        1,
+        218,
+        235,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "buyer_token",
+          "writable": true
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "refund_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lock_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "args.epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ad",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              },
+              {
+                "kind": "arg",
+                "path": "args.nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "BuyArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_refund",
+      "docs": [
+        "The ad's owner takes the refunds for its lots that were taken over."
+      ],
+      "discriminator": [
+        15,
+        16,
+        30,
+        161,
+        255,
+        228,
+        97,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "ad"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "ad",
+          "writable": true
+        },
+        {
+          "name": "refund_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_ad",
+      "docs": [
+        "Closes an ad with no live lots and no refund due; the rent goes back to its owner."
+      ],
+      "discriminator": [
+        148,
+        34,
+        192,
+        131,
+        191,
+        130,
+        137,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "ad"
+          ]
+        },
+        {
+          "name": "ad",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_shard",
+      "docs": [
+        "Admin only. Creates shard `index` (0..100). Several fit in one transaction."
+      ],
+      "discriminator": [
+        52,
+        43,
+        132,
+        208,
+        128,
+        105,
+        135,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Upgrade authority only, once. Creates the config and both vaults; the signer becomes the admin."
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "treasury",
+          "docs": [
+            "owned by the System program, which includes a multisig vault such as Squads'), never a token account or a",
+            "program's PDA, because it can never be changed."
+          ]
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "refund_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lotz_program",
+          "address": "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "release_epoch",
+      "docs": [
+        "Anyone, after `unlock_at`: sends the epoch's locked tokens to the treasury."
+      ],
+      "discriminator": [
+        79,
+        115,
+        5,
+        28,
+        96,
+        1,
+        137,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "lock_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "treasury_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "treasury"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "docs": [
+        "Admin only. Stops or resumes new purchases."
+      ],
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Ad",
+      "discriminator": [
+        81,
+        91,
+        73,
+        106,
+        215,
+        137,
+        214,
+        47
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "LockEpoch",
+      "discriminator": [
+        79,
+        171,
+        30,
+        226,
+        38,
+        184,
+        19,
+        233
+      ]
+    },
+    {
+      "name": "Shard",
+      "discriminator": [
+        141,
+        83,
+        41,
+        244,
+        139,
+        88,
+        245,
+        70
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdClosed",
+      "discriminator": [
+        60,
+        85,
+        233,
+        165,
+        156,
+        38,
+        47,
+        74
+      ]
+    },
+    {
+      "name": "ConfigInitialized",
+      "discriminator": [
+        181,
+        49,
+        200,
+        156,
+        19,
+        167,
+        178,
+        91
+      ]
+    },
+    {
+      "name": "EpochReleased",
+      "discriminator": [
+        49,
+        122,
+        185,
+        26,
+        163,
+        250,
+        254,
+        249
+      ]
+    },
+    {
+      "name": "LotsBought",
+      "discriminator": [
+        245,
+        92,
+        67,
+        134,
+        117,
+        194,
+        50,
+        90
+      ]
+    },
+    {
+      "name": "PausedSet",
+      "discriminator": [
+        171,
+        125,
+        127,
+        156,
+        233,
+        81,
+        68,
+        66
+      ]
+    },
+    {
+      "name": "RefundClaimed",
+      "discriminator": [
+        136,
+        64,
+        242,
+        99,
+        4,
+        244,
+        208,
+        130
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotUpgradeAuthority",
+      "msg": "Only the program's upgrade authority can initialize"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidParams",
+      "msg": "Launch parameter out of range"
+    },
+    {
+      "code": 6002,
+      "name": "UnsupportedMint",
+      "msg": "The token mint has an extension or authority that could move, freeze or tax locked tokens"
+    },
+    {
+      "code": 6003,
+      "name": "NotAdmin",
+      "msg": "Only the admin can do this"
+    },
+    {
+      "code": 6004,
+      "name": "NotAdOwner",
+      "msg": "Only the ad's owner can do this"
+    },
+    {
+      "code": 6005,
+      "name": "Paused",
+      "msg": "Buying is paused"
+    },
+    {
+      "code": 6006,
+      "name": "RectOutOfBounds",
+      "msg": "Rectangle is outside the board"
+    },
+    {
+      "code": 6007,
+      "name": "RectTooLarge",
+      "msg": "Rectangle is empty or larger than the limit"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidLink",
+      "msg": "Link must be an https:// URL of printable ASCII, at most 200 bytes"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidImageUri",
+      "msg": "Image URI must be printable ASCII, 1 to 200 bytes"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidTitle",
+      "msg": "Title must be at most 64 characters with no control characters"
+    },
+    {
+      "code": 6011,
+      "name": "MissingImageHash",
+      "msg": "Image hash is missing"
+    },
+    {
+      "code": 6012,
+      "name": "WrongEpoch",
+      "msg": "Epoch must be the current one or the next"
+    },
+    {
+      "code": 6013,
+      "name": "SlippageExceeded",
+      "msg": "Total price is above max_total"
+    },
+    {
+      "code": 6014,
+      "name": "OwnLot",
+      "msg": "You already own this lot"
+    },
+    {
+      "code": 6015,
+      "name": "WrongShards",
+      "msg": "Shard accounts are missing, out of order or wrong"
+    },
+    {
+      "code": 6016,
+      "name": "PriorAdMissing",
+      "msg": "A previous ad of a taken lot is missing from the accounts"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidPriorAd",
+      "msg": "Account is not a writable Lotz ad"
+    },
+    {
+      "code": 6018,
+      "name": "TooManyPriorAds",
+      "msg": "The rectangle takes lots from too many ads; split the purchase"
+    },
+    {
+      "code": 6019,
+      "name": "NothingToClaim",
+      "msg": "Nothing to claim"
+    },
+    {
+      "code": 6020,
+      "name": "AdNotEmpty",
+      "msg": "Ad still has live lots or an unclaimed refund"
+    },
+    {
+      "code": 6021,
+      "name": "StillLocked",
+      "msg": "This epoch is still locked"
+    },
+    {
+      "code": 6022,
+      "name": "AlreadyReleased",
+      "msg": "This epoch was already released"
+    },
+    {
+      "code": 6023,
+      "name": "WrongTreasury",
+      "msg": "Wrong treasury"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidShardIndex",
+      "msg": "Shard index out of range"
+    },
+    {
+      "code": 6025,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Ad",
+      "docs": [
+        "PDA `[\"ad\", owner, nonce.to_le_bytes()]`. Created by `buy`; immutable except for the takeover counters.",
+        "The account is sized to its strings, so the rent is as low as it can be; `close_ad` returns it."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "type": "u64"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Chosen by the buyer's client; only makes the address unique."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "x",
+            "docs": [
+              "Rectangle in lots."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "y",
+            "type": "u8"
+          },
+          {
+            "name": "w",
+            "type": "u8"
+          },
+          {
+            "name": "h",
+            "type": "u8"
+          },
+          {
+            "name": "lots_alive",
+            "docs": [
+              "Lots of this ad still on the board."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "refund_due",
+            "docs": [
+              "Refunds for lots taken over and not yet claimed."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "paid_total",
+            "docs": [
+              "What the buyer paid in total for this ad."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "image_hash",
+            "docs": [
+              "sha256 of the image file at `image_uri`."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "image_uri",
+            "type": "string"
+          },
+          {
+            "name": "link",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AdClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "type": "u64"
+          },
+          {
+            "name": "ad",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BuyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce",
+            "docs": [
+              "Any u64 the buyer's client picks; only makes the ad's address unique."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "x",
+            "docs": [
+              "Rectangle in lots: `x, y` in `0..100`, `w, h` in `1..=max_rect`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "y",
+            "type": "u8"
+          },
+          {
+            "name": "w",
+            "type": "u8"
+          },
+          {
+            "name": "h",
+            "type": "u8"
+          },
+          {
+            "name": "epoch",
+            "docs": [
+              "Lock epoch the payment goes to: the current one, or the next (for a transaction sent near the boundary)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_total",
+            "docs": [
+              "The transaction fails if the total is above this (price moved between quote and signature)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "image_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "image_uri",
+            "type": "string"
+          },
+          {
+            "name": "link",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "docs": [
+        "PDA `[\"config\"]`. Launch parameters are written once by `initialize` and never change; only the counters and",
+        "`paused` move afterwards."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "Can pause and resume new purchases, nothing else. No access to the vaults."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "docs": [
+              "The token program that owns `token_mint` (SPL Token or Token-2022)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "Wallet whose ATA receives every released epoch. Fixed at `initialize`."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "base_price",
+            "docs": [
+              "Price of a free lot in tier 0, in base units of the token."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tier_size",
+            "docs": [
+              "Lots per price tier."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "tier_mult_bps",
+            "docs": [
+              "Price multiplier from one tier to the next, in bps (12_500 = 1.25x)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "takeover_mult_bps",
+            "docs": [
+              "Always `TAKEOVER_MULT_BPS` (15_000 = 1.5x); stored so clients read it from the chain."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_rect",
+            "docs": [
+              "Largest rectangle side, in lots (<= 10)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "lock_period",
+            "docs": [
+              "Always `LOCK_PERIOD` (365 days)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "epoch_len",
+            "docs": [
+              "Always `EPOCH_LEN` (7 days)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "launch_ts",
+            "docs": [
+              "Unix time of `initialize`; epoch `k` is `[launch_ts + k*epoch_len, launch_ts + (k+1)*epoch_len)`."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "lots_sold",
+            "docs": [
+              "Lots sold at least once. A sold lot never becomes free again."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "takeovers",
+            "docs": [
+              "Lots taken over, all time."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_locked",
+            "docs": [
+              "Tokens paid into the lock, all time."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_released",
+            "docs": [
+              "Tokens released from the lock to the treasury, all time."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "next_ad_id",
+            "docs": [
+              "Sequential id of the next ad. Starts at 1; 0 marks a free lot in a shard."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Stops `buy` only."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "lock_vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "refund_vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_price",
+            "type": "u64"
+          },
+          {
+            "name": "tier_size",
+            "type": "u16"
+          },
+          {
+            "name": "tier_mult_bps",
+            "type": "u16"
+          },
+          {
+            "name": "takeover_mult_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_rect",
+            "type": "u8"
+          },
+          {
+            "name": "lock_period",
+            "type": "i64"
+          },
+          {
+            "name": "epoch_len",
+            "type": "i64"
+          },
+          {
+            "name": "launch_ts",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EpochReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u32"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_released",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_price",
+            "docs": [
+              "Tier-0 price of a free lot, in base units of the token."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tier_size",
+            "type": "u16"
+          },
+          {
+            "name": "tier_mult_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_rect",
+            "docs": [
+              "Largest rectangle side in lots, 1..=10."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Start paused (the admin resumes with `set_paused(false)`)."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockEpoch",
+      "docs": [
+        "PDA `[\"epoch\", k.to_le_bytes()]` (k: u32). Everything locked during week `k` after launch."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "type": "u32"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "unlock_at",
+            "docs": [
+              "`launch_ts + (k+1)*epoch_len + lock_period`."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "released",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Lot",
+      "docs": [
+        "One lot inside a shard."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "docs": [
+              "Id of the ad currently on this lot; 0 = never sold."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_price",
+            "docs": [
+              "What the current owner paid for this lot."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotsBought",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "type": "u64"
+          },
+          {
+            "name": "ad",
+            "type": "pubkey"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "x",
+            "type": "u8"
+          },
+          {
+            "name": "y",
+            "type": "u8"
+          },
+          {
+            "name": "w",
+            "type": "u8"
+          },
+          {
+            "name": "h",
+            "type": "u8"
+          },
+          {
+            "name": "free_lots",
+            "type": "u16"
+          },
+          {
+            "name": "taken_lots",
+            "type": "u16"
+          },
+          {
+            "name": "tier",
+            "docs": [
+              "Price tier the free lots were priced at."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "free_lot_price",
+            "docs": [
+              "Price of one free lot at that tier."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "paid_total",
+            "type": "u64"
+          },
+          {
+            "name": "locked",
+            "type": "u64"
+          },
+          {
+            "name": "refunded",
+            "type": "u64"
+          },
+          {
+            "name": "epoch",
+            "type": "u32"
+          },
+          {
+            "name": "lots_sold",
+            "docs": [
+              "`Config.lots_sold` after this purchase."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "prior",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "PriorAdHit"
+                }
+              }
+            }
+          },
+          {
+            "name": "image_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "image_uri",
+            "type": "string"
+          },
+          {
+            "name": "link",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PausedSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PriorAdHit",
+      "docs": [
+        "One previous ad that lost lots in a purchase."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "type": "u64"
+          },
+          {
+            "name": "lots",
+            "type": "u16"
+          },
+          {
+            "name": "refund",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RefundClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ad_id",
+            "type": "u64"
+          },
+          {
+            "name": "ad",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Shard",
+      "docs": [
+        "PDA `[\"shard\", [index]]`. Shard `index` covers lots `lx in [10*(index%10), +10)`, `ly in [10*(index/10), +10)`;",
+        "`lots` is row-major inside the shard: `lots[(ly%10)*10 + lx%10]`."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lots",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Lot"
+                  }
+                },
+                100
+              ]
+            }
+          },
+          {
+            "name": "index",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "_reserved",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

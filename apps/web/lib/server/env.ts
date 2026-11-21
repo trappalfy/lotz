@@ -1,0 +1,32 @@
+import "server-only";
+
+/** Server-side settings (never sent to the browser except where a route says so). */
+export const env = {
+  databaseUrl: () => required("DATABASE_URL"),
+  rpcUrl: () => required("RPC_URL"),
+  programId: () => required("PROGRAM_ID"),
+  lookupTable: () => process.env.LOOKUP_TABLE || null,
+  /** Wallets allowed into /admin (comma-separated). */
+  adminWallets: () =>
+    (process.env.ADMIN_WALLET ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  sessionSecret: () => {
+    const s = process.env.SESSION_SECRET ?? "";
+    if (s.length < 32) throw new Error("SESSION_SECRET must be at least 32 characters");
+    return s;
+  },
+  cluster: () => (process.env.NEXT_PUBLIC_CLUSTER || "localnet") as "localnet" | "devnet" | "mainnet-beta",
+  priorityMicroLamports: () => Number(process.env.PRIORITY_FEE_MICROLAMPORTS ?? "0"),
+  siteUrl: () => process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  xUrl: () => process.env.NEXT_PUBLIC_X_URL || null,
+  sourceUrl: () => process.env.NEXT_PUBLIC_SOURCE_URL || null,
+  storageDriver: () => process.env.STORAGE_DRIVER ?? "local",
+};
+
+function required(k: string): string {
+  const v = process.env[k];
+  if (!v) throw new Error(`${k} is not set`);
+  return v;
+}

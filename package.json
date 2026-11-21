@@ -1,0 +1,25 @@
+{
+  "name": "lotz",
+  "private": true,
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "idl": "node scripts/copy-idl.mjs",
+    "build:program": "anchor build && node scripts/copy-idl.mjs",
+    "test:program": "cargo test -p lotz",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "localnet": "pnpm --filter @lotz/local localnet",
+    "dev": "pnpm --parallel --filter @lotz/web --filter @lotz/indexer dev",
+    "test:anchor": "anchor test --validator legacy",
+    "localnet:fund": "pnpm --filter @lotz/local fund"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0",
+    "@playwright/test": "1.65.0"
+  }
+}

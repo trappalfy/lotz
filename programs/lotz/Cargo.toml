@@ -1,0 +1,48 @@
+[package]
+name = "lotz"
+version = "0.1.0"
+description = "Lotz: a 1000x1000 pixel board on Solana. Lots are paid in one token; takeovers cost 1.5x and refund the previous owner; the rest is locked for a year."
+license = "MIT"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "lotz"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { version = "1.2.2", features = ["init-if-needed"] }
+bytemuck = { version = "1.24", features = ["derive", "min_const_generics"] }
+anchor-spl = { version = "1.2.2", default-features = false, features = ["token", "token_2022", "token_2022_extensions", "associated_token", "solana-v3"] }
+
+[dev-dependencies]
+litesvm = "0.18.2"
+solana-account = "4.3.0"
+solana-instruction-error = "2.5.0"
+solana-keypair = "3.1.2"
+solana-program-option = "3.1.0"
+solana-program-pack = "3.1.0"
+solana-signer = "3.0.1"
+solana-transaction = "4.1.5"
+solana-transaction-error = "3.4.0"
+spl-associated-token-account-interface = "2.0.0"
+spl-token-interface = "3.0.0"
+spl-token-2022-interface = "2.1.0"
+proptest = "1"
+base64 = "0.22"
+bytemuck = "1.24"
+solana-system-interface = { version = "2.0.0", features = ["bincode"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

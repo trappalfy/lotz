@@ -1,0 +1,6 @@
+# Host toolchain for the program's LiteSVM tests and the IDL build.
+# `cargo build-sbf` (via `anchor build`) uses the Solana platform-tools Rust instead.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

@@ -1,0 +1,34 @@
+# Local only. Mainnet deploy, `initialize` and shard creation are the owner's call (brief §11).
+
+[toolchain]
+anchor_version = "1.2.2"
+# No `solana_version` on purpose: Anchor would run `agave-install init` and switch the machine-wide Solana release.
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+lotz = "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap"
+
+[provider]
+cluster = "localnet"
+wallet = "keys/dev-wallet.json"
+
+[test]
+# Deploy as an upgradeable program with the dev wallet as upgrade authority, like a real deploy.
+upgradeable = true
+startup_wait = 20000
+
+# Own ports: another project's validator may already hold the defaults (8899/8900/9900).
+[test.validator]
+bind_address = "127.0.0.1"
+rpc_port = 38899
+faucet_port = 39900
+gossip_port = 38001
+dynamic_port_range = "38100-38200"
+ledger = ".anchor/test-ledger"
+
+[scripts]
+# 1) every scenario in LiteSVM (with a controllable clock), 2) a smoke run against the real local validator.
+test = "cargo test -p lotz && pnpm --filter @lotz/localnet-tests test:localnet"

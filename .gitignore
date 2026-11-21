@@ -1,0 +1,27 @@
+# secrets
+.env
+.env.*
+!.env.example
+keys/
+*.keypair.json
+
+# rust / anchor
+target/
+.anchor/
+test-ledger/
+
+# node
+node_modules/
+.next/
+.turbo/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# local data
+.data/
+.DS_Store
+
+# test output
+test-results/
+playwright-report/
