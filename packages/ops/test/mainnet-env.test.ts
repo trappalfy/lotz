@@ -45,7 +45,8 @@ describe("mainnet env", () => {
     expect(site.STREAM_URL).toBe("https://live.lotz.fun/stream");
     expect(site.SESSION_SECRET).toBe("s");
     expect(site.ENABLE_EXPERIMENTAL_COREPACK).toBe("1");
-    expect(site.DATABASE_URL).toBeUndefined(); // the Neon integration sets the pooled URL on Vercel
+    expect(site.DATABASE_URL).toBe(owner.DATABASE_URL); // pooled
+    expect(site.DATABASE_URL_UNPOOLED).toBeUndefined();
     expect(site.RPC_WS_URL).toBeUndefined();
     expect(site.VERCEL_TOKEN).toBeUndefined();
     expect(indexer.DATABASE_URL).toBe("postgres://direct");

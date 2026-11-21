@@ -56,10 +56,11 @@ const SHARED = [
   "NSFW_FILTER",
 ];
 
-/** What the site on Vercel gets. DATABASE_URL there is the pooled endpoint (the Neon integration sets it). */
+/** What the site on Vercel gets. DATABASE_URL is the pooled endpoint (host with "-pooler"). */
 export function siteEnv(d: Env): Env {
   return pick(d, [
     ...SHARED,
+    "DATABASE_URL",
     "LOOKUP_TABLE",
     "NEXT_PUBLIC_CLUSTER",
     "PRIORITY_FEE_MICROLAMPORTS",

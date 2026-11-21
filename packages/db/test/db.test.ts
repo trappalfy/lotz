@@ -13,6 +13,7 @@ import {
   setLots,
   getAdsOnDomain,
   rateHit,
+  strictSsl,
   type Pool,
 } from "../src";
 
@@ -103,5 +104,15 @@ describe("db", () => {
     expect(await rateHit(pool, "upload:5.6.7.8", 3_600)).toBe(1);
     const [a, b] = await Promise.all([rateHit(pool, "upload:9", 3_600), rateHit(pool, "upload:9", 3_600)]);
     expect([a, b].sort()).toEqual([1, 2]);
+  });
+});
+
+describe("strictSsl", () => {
+  it("spells out the full certificate check and leaves the rest alone", () => {
+    const neon = "postgresql://u:p@ep-x-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+    expect(strictSsl(neon)).toBe("postgresql://u:p@ep-x-pooler.us-east-1.aws.neon.tech/neondb?sslmode=verify-full&channel_binding=require");
+    expect(strictSsl("postgres://h/db?channel_binding=require&sslmode=prefer")).toBe("postgres://h/db?channel_binding=require&sslmode=verify-full");
+    expect(strictSsl("postgres://127.0.0.1:5433/lotz")).toBe("postgres://127.0.0.1:5433/lotz");
+    expect(strictSsl("postgres://h/db?sslmode=disable")).toBe("postgres://h/db?sslmode=disable");
   });
 });

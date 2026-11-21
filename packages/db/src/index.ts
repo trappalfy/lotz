@@ -21,7 +21,15 @@ export function createPool(
   opts: { max?: number; idleTimeoutMillis?: number } = {},
 ): Pool {
   if (!connectionString) throw new Error("DATABASE_URL is not set");
-  return new pg.Pool({ connectionString, max: opts.max ?? 10, idleTimeoutMillis: opts.idleTimeoutMillis ?? 10_000 });
+  return new pg.Pool({ connectionString: strictSsl(connectionString), max: opts.max ?? 10, idleTimeoutMillis: opts.idleTimeoutMillis ?? 10_000 });
+}
+
+/**
+ * Hosted Postgres URLs (Neon) say sslmode=require. pg already treats that as verify-full and warns that it will
+ * mean less in its next major version; spelling out verify-full keeps the full certificate check without the warning.
+ */
+export function strictSsl(url: string): string {
+  return url.replace(/([?&]sslmode=)(prefer|require|verify-ca)(?=&|$)/, "$1verify-full");
 }
 
 const MIGRATIONS = join(dirname(fileURLToPath(import.meta.url)), "../migrations");
