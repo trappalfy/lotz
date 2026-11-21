@@ -1,5 +1,6 @@
 import { ImageError, MAX_UPLOAD_BYTES, processUpload, type Crop } from "@lotz/imaging";
-import { insertUpload } from "@lotz/db";
+import { insertUpload, rateHit } from "@lotz/db";
+import { screenImage, screeningFromEnv } from "@lotz/moderation";
 import { IMMUTABLE } from "@lotz/storage";
 import { pool } from "@/lib/server/db";
 import { storage } from "@/lib/server/storage";
@@ -7,6 +8,10 @@ import { allow, clientIp } from "@/lib/server/ratelimit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// the first upload on a fresh server instance also loads the screening model (about a second)
+export const maxDuration = 30;
+
+const UPLOADS_PER_HOUR = 60;
 
 /**
  * POST multipart: `file` (PNG/JPG/WebP, static, <= 2 MB), `w`, `h` (rectangle in lots), optional `crop`
@@ -14,7 +19,8 @@ export const runtime = "nodejs";
  * transaction carries `hash` and `uri`.
  */
 export async function POST(req: Request) {
-  if (!allow(`upload:${clientIp(req)}`, 20, 10)) {
+  const ip = clientIp(req);
+  if (!allow(`upload:${ip}`, 20, 10) || (await rateHit(pool(), `upload:${ip}`, 3_600)) > UPLOADS_PER_HOUR) {
     return Response.json({ error: "Too many uploads, wait a minute" }, { status: 429 });
   }
   const length = Number(req.headers.get("content-length") ?? "0");
@@ -44,6 +50,17 @@ export async function POST(req: Request) {
   }
   try {
     const out = await processUpload(new Uint8Array(await file.arrayBuffer()), w, h, crop);
+    const thresholds = screeningFromEnv();
+    if (thresholds) {
+      // refuse before anyone pays; if the check itself fails, the indexer checks again after the purchase
+      const verdict = await screenImage(out.bytes, thresholds).catch((e) => {
+        console.error("image screening failed", e);
+        return null;
+      });
+      if (verdict?.unsafe) {
+        return Response.json({ error: "This image can't go on the board: it looks like adult content." }, { status: 422 });
+      }
+    }
     const key = `i/${out.hash}.webp`;
     const uri = await storage().put(key, out.bytes, "image/webp", IMMUTABLE);
     await insertUpload(pool(), { hash: out.hash, key, width: out.width, height: out.height, bytes: out.bytes.length });

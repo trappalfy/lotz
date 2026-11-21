@@ -5,8 +5,8 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@lotz/sdk", "@lotz/brand", "@lotz/db", "@lotz/storage", "@lotz/imaging"],
-  serverExternalPackages: ["sharp", "pg"],
+  transpilePackages: ["@lotz/sdk", "@lotz/brand", "@lotz/db", "@lotz/storage", "@lotz/imaging", "@lotz/moderation"],
+  serverExternalPackages: ["sharp", "pg", "@tensorflow/tfjs", "@tensorflow/tfjs-backend-wasm", "nsfwjs"],
   turbopack: {
     resolveAlias: {
       fs: { browser: "./empty.ts" },

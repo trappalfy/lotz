@@ -18,6 +18,7 @@ const HIDDEN_WHY: Record<string, string> = {
   hash_mismatch: "Hidden: the image file does not match the hash in the transaction.",
   mismatch: "Hidden: the image file does not match the hash in the transaction.",
   bad_image: "Hidden: the image could not be loaded.",
+  nsfw: "Hidden on this site: the image was flagged as adult content. Moderators can review it.",
   error: "Hidden: the image could not be loaded.",
   pending: "The image is being checked.",
 };

@@ -125,6 +125,8 @@ async function main(): Promise<void> {
     NEXT_PUBLIC_CLUSTER: "localnet",
     SESSION_SECRET: env.get("SESSION_SECRET") || randomSecret(),
     DATABASE_URL: env.get("DATABASE_URL") || "postgres://127.0.0.1:5433/lotz",
+    // live updates come from the indexer, as in production
+    STREAM_URL: env.get("STREAM_URL") || `http://127.0.0.1:${env.get("INDEXER_PORT") || 4100}/stream`,
   });
   console.log("wrote .env");
 

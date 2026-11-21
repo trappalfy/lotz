@@ -16,9 +16,12 @@ export const STREAM_CHANNEL = "lotz_stream";
 /** Channel the web app notifies on after a moderation change; the indexer re-renders. */
 export const MODERATION_CHANNEL = "lotz_moderation";
 
-export function createPool(connectionString = process.env.DATABASE_URL): Pool {
+export function createPool(
+  connectionString = process.env.DATABASE_URL,
+  opts: { max?: number; idleTimeoutMillis?: number } = {},
+): Pool {
   if (!connectionString) throw new Error("DATABASE_URL is not set");
-  return new pg.Pool({ connectionString, max: 10 });
+  return new pg.Pool({ connectionString, max: opts.max ?? 10, idleTimeoutMillis: opts.idleTimeoutMillis ?? 10_000 });
 }
 
 const MIGRATIONS = join(dirname(fileURLToPath(import.meta.url)), "../migrations");
@@ -571,6 +574,24 @@ export async function processedAmong(db: Q, signatures: string[]): Promise<Set<s
   if (signatures.length === 0) return new Set();
   const r = await db.query<{ signature: string }>("select signature from processed_signatures where signature = any($1::text[])", [signatures]);
   return new Set(r.rows.map((x) => x.signature));
+}
+
+// ------------------------------------------------------------------ rate limits
+
+/**
+ * Counts one request for `key` in the current fixed window and returns the count so far. Shared by every server
+ * instance, unlike an in-memory limiter.
+ */
+export async function rateHit(db: Q, key: string, windowSeconds: number): Promise<number> {
+  const r = await db.query<{ hits: number }>(
+    `insert into rate_limits (key, window_start, hits)
+     values ($1, to_timestamp(floor(extract(epoch from now()) / $2) * $2), 1)
+     on conflict (key, window_start) do update set hits = rate_limits.hits + 1
+     returning hits`,
+    [key, windowSeconds],
+  );
+  if (Math.random() < 0.01) await db.query("delete from rate_limits where window_start < now() - interval '1 day'");
+  return r.rows[0]!.hits;
 }
 
 // ------------------------------------------------------------------ uploads and kv

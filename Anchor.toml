@@ -9,7 +9,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-lotz = "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap"
+lotz = "LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa"
+
+[programs.mainnet]
+lotz = "LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa"
 
 [provider]
 cluster = "localnet"

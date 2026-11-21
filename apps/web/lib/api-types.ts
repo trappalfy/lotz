@@ -14,6 +14,8 @@ export interface DeploymentInfo {
   initialized: boolean;
   /** The browser talks to this RPC endpoint (our proxy unless overridden). */
   rpcUrl: string;
+  /** Server-sent events with live updates: the indexer's /stream in production, or this site's /api/stream. */
+  streamUrl: string;
   priorityMicroLamports: number;
   xUrl: string | null;
   sourceUrl: string | null;

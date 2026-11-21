@@ -20,7 +20,7 @@ pub use constants::*;
 pub use instructions::*;
 
 // Local program id (gitignored keypair in target/deploy/). The mainnet id is the owner's.
-declare_id!("4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap");
+declare_id!("LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa");
 
 #[program]
 pub mod lotz {

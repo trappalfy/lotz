@@ -23,6 +23,8 @@ export const env = {
   xUrl: () => process.env.NEXT_PUBLIC_X_URL || null,
   sourceUrl: () => process.env.NEXT_PUBLIC_SOURCE_URL || null,
   storageDriver: () => process.env.STORAGE_DRIVER ?? "local",
+  /** The indexer's public SSE endpoint, e.g. https://live.lotz.fun/stream (unset: /api/stream on this site). */
+  streamUrl: () => process.env.STREAM_URL || null,
 };
 
 function required(k: string): string {

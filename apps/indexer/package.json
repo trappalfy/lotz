@@ -14,6 +14,7 @@
     "@lotz/brand": "workspace:*",
     "@lotz/db": "workspace:*",
     "@lotz/imaging": "workspace:*",
+    "@lotz/moderation": "workspace:*",
     "@lotz/sdk": "workspace:*",
     "@lotz/storage": "workspace:*",
     "@solana/web3.js": "1.99.0",
@@ -23,7 +24,7 @@
   "devDependencies": {
     "@lotz/local": "workspace:*",
     "@solana/spl-token": "0.4.15",
-    "pg": "8.23.1",
-    "@types/pg": "8.23.1"
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1"
   }
 }

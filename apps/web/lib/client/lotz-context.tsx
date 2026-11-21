@@ -50,7 +50,9 @@ export function LotzProvider({ children }: { children: ReactNode }) {
   }, [refreshBoard]);
 
   // live updates
+  const streamUrl = info?.streamUrl ?? null;
   useEffect(() => {
+    if (!streamUrl) return;
     let es: EventSource | null = null;
     let closed = false;
     const scheduleRefresh = () => {
@@ -58,7 +60,7 @@ export function LotzProvider({ children }: { children: ReactNode }) {
       refreshTimer.current = setTimeout(() => void refreshBoard(), 150);
     };
     const open = () => {
-      es = new EventSource("/api/stream");
+      es = new EventSource(streamUrl);
       es.onmessage = (m) => {
         let msg: StreamEvent;
         try {
@@ -84,7 +86,7 @@ export function LotzProvider({ children }: { children: ReactNode }) {
       closed = true;
       es?.close();
     };
-  }, [refreshBoard]);
+  }, [refreshBoard, streamUrl]);
 
   const connection = useMemo(() => {
     if (!info) return null;

@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/.env
+**/.env.*
+!.env.example
+.git
+.data
+.anchor
+target
+keys
+programs
+test-results
+playwright-report
+lotz-brief

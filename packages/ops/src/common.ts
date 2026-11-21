@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
 import {
   AddressLookupTableAccount,
@@ -15,8 +17,14 @@ export function need(k: string): string {
   return v;
 }
 
+export function repoRoot(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+}
+
+/** Loads a keypair file; a relative path is taken from where you ran pnpm (not the package folder). */
 export function keypair(path: string): Keypair {
-  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path.replace(/^~/, process.env.HOME ?? "~"), "utf8")) as number[]));
+  const full = resolve(process.env.INIT_CWD ?? process.cwd(), path.replace(/^~/, process.env.HOME ?? "~"));
+  return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(full, "utf8")) as number[]));
 }
 
 export async function confirmTyped(word: string, prompt: string): Promise<boolean> {

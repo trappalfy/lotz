@@ -57,6 +57,7 @@ export async function deploymentInfo(origin: string): Promise<DeploymentInfo> {
     upgradeAuthority: c?.upgradeAuthority ?? null,
     initialized: !!c,
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || `${origin}/api/rpc`,
+    streamUrl: env.streamUrl() || `${origin}/api/stream`,
     priorityMicroLamports: env.priorityMicroLamports(),
     xUrl: env.xUrl(),
     sourceUrl: env.sourceUrl(),

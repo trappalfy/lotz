@@ -13,3 +13,5 @@ allowBuilds:
   protobufjs: false
   usb: false
   "@solana/wallet-adapter-trezor": false
+  # postinstall only prints a message (pulled in by TensorFlow.js)
+  core-js: false

@@ -7,10 +7,15 @@
   "scripts": {
     "launch": "tsx src/launch.ts",
     "pause": "tsx src/pause.ts",
+    "import-key": "tsx src/import-key.ts",
+    "check-mainnet": "tsx src/check-mainnet.ts",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@lotz/db": "workspace:*",
     "@lotz/sdk": "workspace:*",
+    "@lotz/storage": "workspace:*",
     "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "1.99.0",
     "tsx": "4.23.15"

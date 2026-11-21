@@ -4,14 +4,16 @@
  * - `getSignaturesForAddress` polling as the source of truth (catches anything the socket missed);
  * - optional Helius webhook endpoint;
  * - periodic reconciliation from account state, hourly OG card;
- * - LISTEN on the moderation channel to re-render hidden/unhidden ads.
+ * - LISTEN on the moderation channel to re-render hidden/unhidden ads;
+ * - automatic screening of new ad images (local model, `NSFW_FILTER=off` to turn it off);
+ * - HTTP: /health, /stream (live updates for the site), /webhooks/helius.
  */
-import { createServer } from "node:http";
-import { timingSafeEqual } from "node:crypto";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { createPool, migrate, MODERATION_CHANNEL } from "@lotz/db";
+import { screenRaw, screeningFromEnv, warmUp } from "@lotz/moderation";
 import { storageFromEnv } from "@lotz/storage";
 import { Chain } from "./chain";
+import { createHttpServer } from "./http";
 import { Indexer } from "./indexer";
 import { pollOnce } from "./poll";
 
@@ -31,7 +33,20 @@ const log = (msg: string, extra?: Record<string, unknown>) =>
   console.log(JSON.stringify({ t: new Date().toISOString(), msg, ...extra }));
 
 await migrate(pool);
-const indexer = new Indexer({ chain: new Chain(connection, programId), pool, storage, log });
+const thresholds = screeningFromEnv();
+const screen = thresholds
+  ? async (raw: Uint8Array, width: number, height: number) => {
+      try {
+        const v = await screenRaw(raw, width, height, 4, thresholds);
+        return v.unsafe;
+      } catch (e) {
+        log("image screening failed", { error: String(e) });
+        return null;
+      }
+    }
+  : undefined;
+if (thresholds) await warmUp();
+const indexer = new Indexer({ chain: new Chain(connection, programId), pool, storage, log, screen });
 
 const poll = () => pollOnce(connection, programId, pool, indexer);
 
@@ -84,40 +99,9 @@ listener.on("notification", (n) => {
   }
 });
 
-// health and Helius webhook
-const secret = env.HELIUS_WEBHOOK_SECRET ?? "";
-const port = Number(env.INDEXER_PORT ?? 4100);
-createServer((req, res) => {
-  if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true }));
-    return;
-  }
-  if (req.method === "POST" && req.url === "/webhooks/helius") {
-    const auth = Buffer.from(req.headers.authorization ?? "");
-    const want = Buffer.from(secret);
-    if (!secret || auth.length !== want.length || !timingSafeEqual(auth, want)) {
-      res.writeHead(401).end();
-      return;
-    }
-    let body = "";
-    req.on("data", (c) => {
-      body += c;
-      if (body.length > 5_000_000) req.destroy();
-    });
-    req.on("end", () => {
-      try {
-        const items = JSON.parse(body) as { signature?: string; transaction?: { signatures?: string[] } }[];
-        for (const it of Array.isArray(items) ? items : []) {
-          const sig = it.signature ?? it.transaction?.signatures?.[0];
-          // The webhook only tells us *what* to look at; the transaction itself is always fetched from RPC.
-          if (sig && /^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig)) indexer.handleSignature(sig).catch(() => {});
-        }
-        res.writeHead(200).end();
-      } catch {
-        res.writeHead(400).end();
-      }
-    });
-    return;
-  }
-  res.writeHead(404).end();
-}).listen(port, "127.0.0.1", () => log("http listening", { port }));
+// health, live stream for browsers, Helius webhook
+const port = Number(env.PORT || env.INDEXER_PORT || 4100);
+const host = env.INDEXER_HOST || "127.0.0.1";
+createHttpServer({ indexer, storage, webhookSecret: env.HELIUS_WEBHOOK_SECRET ?? "", log }).listen(port, host, () =>
+  log("http listening", { host, port }),
+);

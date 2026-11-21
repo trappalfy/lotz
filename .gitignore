@@ -25,3 +25,6 @@ next-env.d.ts
 # test output
 test-results/
 playwright-report/
+
+# logs
+*.log

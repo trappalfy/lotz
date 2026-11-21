@@ -12,6 +12,7 @@ import {
   recordLotHistory,
   setLots,
   getAdsOnDomain,
+  rateHit,
   type Pool,
 } from "../src";
 
@@ -94,5 +95,13 @@ describe("db", () => {
     expect(await getLotHistory(pool, 2, 0)).toHaveLength(0);
     expect(await getAdsOnDomain(pool, "example.com")).toHaveLength(1);
     expect(await getAdsOnDomain(pool, "ample.com")).toHaveLength(0);
+  });
+
+  it("counts requests per key in a shared window", async () => {
+    expect(await rateHit(pool, "upload:1.2.3.4", 3_600)).toBe(1);
+    expect(await rateHit(pool, "upload:1.2.3.4", 3_600)).toBe(2);
+    expect(await rateHit(pool, "upload:5.6.7.8", 3_600)).toBe(1);
+    const [a, b] = await Promise.all([rateHit(pool, "upload:9", 3_600), rateHit(pool, "upload:9", 3_600)]);
+    expect([a, b].sort()).toEqual([1, 2]);
   });
 });

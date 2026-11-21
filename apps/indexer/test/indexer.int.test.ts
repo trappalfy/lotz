@@ -83,7 +83,9 @@ beforeAll(async () => {
   await listener.query(`listen ${db.STREAM_CHANNEL}`);
   listener.on("notification", (n) => messages.push(JSON.parse(n.payload!) as StreamMessage));
 
-  indexer = new Indexer({ chain: new Chain(connection, IDL_PROGRAM_ID), pool, storage, log: () => {} });
+  // stand-in for the image model: flags pure magenta images
+  const screen = async (raw: Uint8Array) => raw[0] === 0xff && raw[1] === 0x00 && raw[2] === 0xff;
+  indexer = new Indexer({ chain: new Chain(connection, IDL_PROGRAM_ID), pool, storage, log: () => {}, screen });
   await indexer.init();
 }, 180_000);
 
@@ -188,6 +190,23 @@ describe("indexer", () => {
     const p = pixel(10, 10);
     expect([0xde, 0xff]).toContain(p[0]);
     expect(p[1]).toBe(p[0]);
+  });
+
+  it("hides an ad the image screening flags, and a moderator's unhide sticks", async () => {
+    const img = await uploadSolid("#ff00ff", 1, 1);
+    const res = await lotz.buy(alice, { x: 12, y: 10, w: 1, h: 1 }, { imageUri: img.uri, imageHash: img.hash });
+    await indexer.handleSignature(res.sig);
+    let ad = (await db.getAdsByOwner(pool, alice.publicKey.toBase58())).find((a) => a.x === 12)!;
+    expect(ad.imageStatus).toBe("ok");
+    expect(ad.hidden).toBe(true);
+    expect(ad.hiddenReason).toBe("nsfw");
+    expect(pixel(12, 10)[1]).not.toBe(0x00);
+
+    await db.setHidden(pool, ad.adId, false, null, "moderator");
+    await indexer.onModeration([ad.adId]);
+    ad = (await db.getAdsByIds(pool, [ad.adId]))[0]!;
+    expect(ad.hidden).toBe(false);
+    expect(pixel(12, 10).slice(0, 3)).toEqual([0xff, 0x00, 0xff]);
   });
 
   it("hides ads on a blocked domain", async () => {

@@ -13,11 +13,12 @@ The product brief is [LOTZ-SITE-BRIEF.md](LOTZ-SITE-BRIEF.md).
 | [packages/db](packages/db) | Postgres schema (SQL migrations) and queries |
 | [packages/storage](packages/storage) | Object storage: a local folder in development, R2/S3 in production |
 | [packages/imaging](packages/imaging) | Image checks, crop and resize to `w×40 × h×40`, sha256, SSRF-safe fetching |
+| [packages/moderation](packages/moderation) | Automatic adult-content screening of ad images with a local model (nsfwjs on TensorFlow.js WebAssembly) |
 | [packages/brand](packages/brand) | Star and eyes as cell matrices; eye/pupil analysis |
-| [apps/indexer](apps/indexer) | Listens to the program, keeps Postgres in sync, verifies images, renders the board and OG card, notifies the site |
-| [apps/web](apps/web) | Next.js site and API: board, purchase, `/me`, `/admin`, upload, SSE stream, RPC proxy |
+| [apps/indexer](apps/indexer) | Listens to the program, keeps Postgres in sync, verifies and screens images, renders the board and OG card, serves the live stream |
+| [apps/web](apps/web) | Next.js site and API (runs on Vercel): board, purchase, `/me`, `/admin`, upload, RPC proxy |
 | [packages/local](packages/local) | Local validator setup and demo data (refuses non-local RPCs) |
-| [packages/ops](packages/ops) | Owner tools for a real cluster: launch (dry run by default), pause |
+| [packages/ops](packages/ops) | Owner tools for a real cluster: launch (dry run by default), pause, import a wallet key |
 | [tests/localnet](tests/localnet) | Smoke tests on a real `solana-test-validator` (run by `anchor test`) |
 | [docs](docs) | [DECISIONS.md](docs/DECISIONS.md), [QUESTIONS.md](docs/QUESTIONS.md), [DEPLOY.md](docs/DEPLOY.md) |
 
@@ -49,7 +50,9 @@ pnpm test:anchor                       # the above + smoke tests on solana-test-
 pnpm --filter @lotz/sdk test           # price math mirrors the program, encoders, event parsing
 pnpm --filter @lotz/db test            # schema and queries (database lotz_test)
 pnpm --filter @lotz/imaging test       # image pipeline, SSRF guard
+pnpm --filter @lotz/moderation test    # image screening: thresholds, regions, the model on the WebAssembly backend
 pnpm --filter @lotz/indexer test       # end to end on its own validator: events -> database -> render -> stream
+pnpm --filter @lotz/ops test           # key import parsing
 pnpm --filter @lotz/web e2e            # browser: connect, select, upload, pay, takeover, claim, moderation, background
 ```
 
@@ -59,13 +62,16 @@ inject through the Wallet Standard, so no browser extension is needed.
 ## How it fits together
 
 ```
- browser ──/api/rpc──▶ RPC (key stays on the server)          program (on-chain)
-    │  ▲                                                          │ logs + accounts
-    │  └──── /api/stream (SSE) ◀── Postgres NOTIFY ◀── indexer ◀──┘ (websocket, polling, Helius webhook)
-    │                                                   │
-    └──/api/board, /api/stats, … ──▶ Postgres ◀─────────┘
+ browser ──/api/rpc──▶ RPC (key stays on the server)              program (on-chain)
+    │  ▲                                                              │ logs + accounts
+    │  └──────────── indexer /stream (SSE) ◀── indexer ◀──────────────┘ (websocket, polling, Helius webhook)
+    │                                            │  ▲
+    └──/api/board, /api/stats, … ──▶ Postgres ◀──┘  └── NOTIFY on moderation changes from /admin
                                          storage (R2/S3): uploaded images, board renders, OG card
 ```
+
+The site (`apps/web`) only answers short requests, so it runs on Vercel; the indexer is one long-running process
+on any container host, and browsers get live updates from it directly (`STREAM_URL`).
 
 - The program is the source of truth. The indexer applies events in order and reconciles from account state
   (shards, ads, epochs) at start and every few minutes, so a missed event cannot leave the board wrong.

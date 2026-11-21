@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/lotz.json`.
  */
 export type Lotz = {
-  "address": "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap",
+  "address": "LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa",
   "metadata": {
     "name": "lotz",
     "version": "0.1.0",
@@ -506,7 +506,7 @@ export type Lotz = {
         },
         {
           "name": "lotzProgram",
-          "address": "4WieikR7HUJt3FkpLQYTocWa9GS4LUio6tuGeDt1DWap"
+          "address": "LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa"
         },
         {
           "name": "programData"

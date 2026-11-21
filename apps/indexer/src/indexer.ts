@@ -36,6 +36,11 @@ export interface IndexerOptions {
   log?: (msg: string, extra?: Record<string, unknown>) => void;
   /** Tests: fetch external images from localhost over http. */
   allowPrivateImages?: boolean;
+  /**
+   * Automatic screening of ad images (raw RGBA). Returns true to hide the ad as adult content, null if the check
+   * could not run (the ad stays up; moderators can still hide it).
+   */
+  screen?: (raw: Uint8Array, width: number, height: number) => Promise<boolean | null>;
 }
 
 /** What the site's stream receives (kept small: pg_notify payloads are capped at 8 kB). */
@@ -385,7 +390,17 @@ export class Indexer {
         await this.o.storage.put(key, await encodeWebp(raw, ad.w * LOT_IMAGE_PX, ad.h * LOT_IMAGE_PX), contentTypeOf(key), IMMUTABLE);
       }
       await db.setAdImage(this.pool, ad.adId, "ok", key, null);
-      return { ...ad, imageStatus: "ok", imageKey: key, imageError: null };
+      const checked: db.AdRow = { ...ad, imageStatus: "ok", imageKey: key, imageError: null };
+      // runs once per image (an "ok" image is not checked again), so a moderator's unhide sticks
+      if (!ad.hidden && this.o.screen) {
+        const flagged = await this.o.screen(raw, ad.w * LOT_IMAGE_PX, ad.h * LOT_IMAGE_PX).catch(() => null);
+        if (flagged) {
+          this.log("image flagged as adult content: hiding", { adId: ad.adId });
+          await db.setHidden(this.pool, ad.adId, true, "nsfw", "indexer");
+          return { ...checked, hidden: true, hiddenReason: "nsfw" };
+        }
+      }
+      return checked;
     } catch (e) {
       const msg = `decode failed: ${String((e as Error).message ?? e)}`;
       await db.setAdImage(this.pool, ad.adId, "error", null, msg);
@@ -488,6 +503,28 @@ export class Indexer {
     const msg: StreamMessage =
       kind === "buy" && buy ? { type: "buy", buy, board: this.images, stats } : { type: kind === "buy" ? "board" : kind, board: this.images, stats } as StreamMessage;
     await db.notify(this.pool, db.STREAM_CHANNEL, msg);
+    for (const l of this.subscribers) {
+      try {
+        l(msg);
+      } catch {
+        /* a closed client; it unsubscribes itself */
+      }
+    }
+  }
+
+  private subscribers = new Set<(msg: StreamMessage) => void>();
+
+  /** Every published stream message, in process (the indexer's own /stream endpoint). */
+  subscribe(fn: (msg: StreamMessage) => void): () => void {
+    this.subscribers.add(fn);
+    return () => {
+      this.subscribers.delete(fn);
+    };
+  }
+
+  /** The current board images and counters, for a client that just connected. */
+  snapshot(): { board: db.BoardImages | null; stats: StreamStats } {
+    return { board: this.images ?? null, stats: this.stats() };
   }
 
   private stats(): StreamStats {
