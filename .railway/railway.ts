@@ -17,8 +17,9 @@ export default defineRailway(() => {
     start: "pnpm --filter @lotz/indexer start",
     healthcheck: "/health",
     healthcheckTimeout: 300,
-    // one instance only (two would index the same transactions), next to the database (Neon, AWS us-east-1)
-    replicas: { "us-east": 1 },
+    // one instance only (two would index the same transactions), in US East (Virginia) next to the database
+    // (Neon, AWS us-east-1). The key is Railway's region ID; the "us-east" alias is not understood here.
+    replicas: { "us-east4-eqdc4a": 1 },
     // live.lotz.fun was added with `railway domain` (configuration cannot register a domain); listed so apply keeps it
     networking: { privateNetworkEndpoint: "lotzindexer", customDomains: { "live.lotz.fun": {} } },
   });
