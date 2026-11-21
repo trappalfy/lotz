@@ -34,6 +34,12 @@ export class Chain {
     return info.data[44]!;
   }
 
+  /** The token's total supply in base units, as the mint says now. */
+  async tokenSupply(mint: PublicKey): Promise<bigint> {
+    const r = await this.connection.getTokenSupply(mint, "confirmed");
+    return BigInt(r.value.amount);
+  }
+
   /** The program's upgrade authority, or null if the program is immutable. */
   async upgradeAuthority(): Promise<string | null> {
     const info = await this.connection.getAccountInfo(this.pdas.programData(), "confirmed");

@@ -52,7 +52,7 @@ pnpm --filter @lotz/db test            # schema and queries (database lotz_test)
 pnpm --filter @lotz/imaging test       # image pipeline, SSRF guard
 pnpm --filter @lotz/moderation test    # image screening: thresholds, regions, the model on the WebAssembly backend
 pnpm --filter @lotz/indexer test       # end to end on its own validator: events -> database -> render -> stream
-pnpm --filter @lotz/ops test           # key import parsing
+pnpm --filter @lotz/ops test           # key import, dollar price, mainnet settings
 pnpm --filter @lotz/web e2e            # browser: connect, select, upload, pay, takeover, claim, moderation, background
 ```
 

@@ -27,6 +27,7 @@ import { decodeAdImage, encodeWebp, safeFetch, sha256Hex, MAX_UPLOAD_BYTES, LOT_
 import { contentTypeOf, IMMUTABLE, type Storage } from "@lotz/storage";
 import { BoardRenderer, type LotPaint } from "./renderer";
 import { renderOg } from "./og";
+import { renderLockCard } from "./card";
 import type { Chain } from "./chain";
 
 export interface IndexerOptions {
@@ -56,6 +57,8 @@ export interface StreamStats {
   totalReleased: string;
   freeLotPrice: string;
   paused: boolean;
+  /** The token's total supply (base units), null until read. */
+  supply: string | null;
 }
 
 export interface StreamBuy {
@@ -92,6 +95,10 @@ export class Indexer {
   private blocked: string[] = [];
   private images: db.BoardImages | null = null;
   private config: db.ConfigRow | null = null;
+  /** The token's total supply (base units), refreshed every minute. */
+  private supply: bigint | null = null;
+  /** What the published share card shows, to redraw it only when that changes. */
+  private cardState = "";
   /** While true (backfill), events update the database and the buffer but nothing is published. */
   quiet = false;
   private readonly log: NonNullable<IndexerOptions["log"]>;
@@ -116,6 +123,9 @@ export class Indexer {
     this.images = await db.kvGet<db.BoardImages>(this.pool, db.BOARD_IMAGES_KEY);
     this.blocked = (await db.getBlockedDomains(this.pool)).map((d) => d.domain);
     this.config = await db.getConfig(this.pool);
+    const supply = await db.kvGet<db.TokenSupply>(this.pool, db.TOKEN_SUPPLY_KEY);
+    this.supply = supply ? BigInt(supply.amount) : null;
+    this.cardState = cardStateOf(await db.kvGet<db.ShareCard>(this.pool, db.SHARE_CARD_KEY));
     this.board = (await db.getAllLots(this.pool)).map((l) => ({ adId: l.adId, lastPrice: l.lastPrice }));
     this.ads = new Map((await db.getLiveAds(this.pool)).map((a) => [a.adId, a]));
     this.loaded = true;
@@ -125,6 +135,8 @@ export class Indexer {
   async init(): Promise<void> {
     if (!this.loaded) await this.load();
     await this.reconcile();
+    await this.refreshSupply();
+    await this.refreshShareCard().catch((e) => this.log("share card failed", { error: String(e) }));
     await this.verifyPendingImages();
     await this.repaintAll();
     await this.flush("board");
@@ -537,7 +549,44 @@ export class Indexer {
       totalReleased: (c?.totalReleased ?? 0n).toString(),
       freeLotPrice: free.toString(),
       paused: c?.paused ?? false,
+      supply: this.supply?.toString() ?? null,
     };
+  }
+
+  /** Reads the token's total supply from the mint; it changes with mints and burns. */
+  async refreshSupply(): Promise<void> {
+    if (!this.config) return;
+    try {
+      const supply = await this.o.chain.tokenSupply(new PublicKey(this.config.tokenMint));
+      if (supply === this.supply) return;
+      this.supply = supply;
+      await db.kvSet(this.pool, db.TOKEN_SUPPLY_KEY, { amount: supply.toString(), at: new Date().toISOString() });
+    } catch (e) {
+      this.log("token supply read failed", { error: String(e) });
+    }
+  }
+
+  /** Redraws the share card for posts if the numbers on it changed (or the date did). */
+  async refreshShareCard(now = new Date()): Promise<void> {
+    const c = this.config;
+    if (!c || this.supply == null || this.supply <= 0n) return;
+    const lockedNow = c.totalLocked - c.totalReleased;
+    const date = now.toISOString().slice(0, 10);
+    const state = [lockedNow, this.supply, c.lotsSold, c.takeovers, date].join("/");
+    if (state === this.cardState) return;
+    const png = await renderLockCard({
+      lockedNow,
+      supply: this.supply,
+      decimals: c.tokenDecimals,
+      lotsSold: c.lotsSold,
+      takeovers: c.takeovers,
+      date,
+    });
+    const key = "share/lock.png";
+    await this.o.storage.put(key, png, "image/png", "public, max-age=60");
+    const card: db.ShareCard = { key, version: now.getTime(), lockedNow: lockedNow.toString(), supply: this.supply.toString(), date };
+    await db.kvSet(this.pool, db.SHARE_CARD_KEY, { ...card, state });
+    this.cardState = state;
   }
 
   /** Renders the OG card from the current 1x board. */
@@ -671,9 +720,11 @@ export class Indexer {
   periodic(): Promise<void> {
     return this.enqueue(async () => {
       await this.refreshConfig();
+      await this.refreshSupply();
       await this.refreshEpochs();
       await this.reconcileShards();
       if (this.renderer.hasDirty()) await this.flush("board");
+      await this.refreshShareCard().catch((e) => this.log("share card failed", { error: String(e) }));
     });
   }
 
@@ -723,4 +774,8 @@ function jsonValue(v: unknown): unknown {
     return o;
   }
   return v;
+}
+
+function cardStateOf(card: (db.ShareCard & { state?: string }) | null): string {
+  return card?.state ?? "";
 }

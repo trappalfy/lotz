@@ -80,3 +80,25 @@ export function displayTitle(title: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * The share of the token supply in the lock as a percentage string, never rounded up: `4.21%`, `0.073%`,
+ * `<0.0001%`. Precision grows as the share shrinks so small numbers still show their first digits.
+ */
+export function formatShare(locked: bigint, supply: bigint): string {
+  if (supply <= 0n) return "—";
+  if (locked <= 0n) return "0%";
+  // percent with 6 decimal places, truncated
+  const micro = (locked * 100_000_000n) / supply;
+  const decimals = micro >= 10_000_000n ? 1 : micro >= 1_000_000n ? 2 : micro >= 10_000n ? 3 : micro >= 100n ? 4 : -1;
+  if (decimals < 0) return "<0.0001%";
+  const whole = micro / 1_000_000n;
+  const frac = (micro % 1_000_000n).toString().padStart(6, "0").slice(0, decimals).replace(/0+$/, "");
+  return `${whole}${frac ? `.${frac}` : ""}%`;
+}
+
+/** The same share as a plain fraction (0..1) for APIs; may be off in the last float digit. */
+export function shareOfSupply(locked: bigint, supply: bigint): number | null {
+  if (supply <= 0n) return null;
+  return Number((locked * 1_000_000_000_000n) / supply) / 1e12;
+}

@@ -232,3 +232,22 @@ describe("instructions and events", () => {
     expect(buyComputeUnits(1, 0)).toBeGreaterThan(36_000 * 1.5);
   });
 });
+
+describe("share of supply", () => {
+  it("is truncated, never rounded up, with more digits for small shares", async () => {
+    const { formatShare, shareOfSupply } = await import("../src");
+    const supply = 1_000_000_000_000_000n; // 1B tokens at 6 decimals
+    expect(formatShare(0n, supply)).toBe("0%");
+    expect(formatShare(supply, supply)).toBe("100%");
+    expect(formatShare((supply * 4219n) / 100_000n, supply)).toBe("4.21%");
+    expect(formatShare((supply * 125n) / 1000n, supply)).toBe("12.5%");
+    expect(formatShare((supply * 73n) / 100_000n, supply)).toBe("0.073%");
+    expect(formatShare((supply * 3n) / 1_000_000n, supply)).toBe("0.0003%");
+    expect(formatShare(1n, supply)).toBe("<0.0001%");
+    expect(formatShare(5n, 0n)).toBe("—");
+    // 0.99999% stays below 1%
+    expect(formatShare(999_990n, 100_000_000n)).toBe("0.999%");
+    expect(shareOfSupply(supply / 4n, supply)).toBe(0.25);
+    expect(shareOfSupply(1n, 0n)).toBeNull();
+  });
+});

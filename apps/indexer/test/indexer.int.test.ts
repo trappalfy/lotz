@@ -252,6 +252,25 @@ describe("indexer", () => {
     expect((await db.getActivity(pool, 100)).length).toBe(events);
   });
 
+  it("tracks the token supply and publishes the share card when the numbers change", async () => {
+    await indexer.periodic();
+    const supply = await db.kvGet<db.TokenSupply>(pool, db.TOKEN_SUPPLY_KEY);
+    const onChain = await lotz.connection.getTokenSupply(lotz.d.mint, "confirmed");
+    expect(supply?.amount).toBe(onChain.value.amount);
+    expect(indexer.snapshot().stats.supply).toBe(onChain.value.amount);
+
+    const card = await db.kvGet<db.ShareCard>(pool, db.SHARE_CARD_KEY);
+    const config = (await db.getConfig(pool))!;
+    expect(card?.lockedNow).toBe((config.totalLocked - config.totalReleased).toString());
+    const png = await storage.get("share/lock.png");
+    const meta = await sharp(png!).metadata();
+    expect([meta.width, meta.height]).toEqual([1200, 675]);
+
+    // same numbers: not redrawn
+    await indexer.periodic();
+    expect((await db.kvGet<db.ShareCard>(pool, db.SHARE_CARD_KEY))!.version).toBe(card!.version);
+  });
+
   it("renders the OG card", async () => {
     await indexer.renderOg();
     const png = await storage.get("og/latest.png");

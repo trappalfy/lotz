@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatTokens, shortAddress } from "@lotz/sdk";
+import { formatShare, formatTokens, shortAddress } from "@lotz/sdk";
 import { useLotz } from "@/lib/client/lotz-context";
 import { explorerAccount } from "@/lib/client/send";
 import type { StatsResponse } from "@/lib/api-types";
@@ -60,7 +60,11 @@ export function TheLock() {
       </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-3">
-        <Figure label="In the lock now" value={stats ? formatTokens(lockedNow, dec) : "—"} />
+        <Figure
+          label="In the lock now"
+          value={stats ? formatTokens(lockedNow, dec) : "—"}
+          note={stats?.supply ? `${formatShare(lockedNow, BigInt(stats.supply))} of the token supply` : undefined}
+        />
         <Figure label="Released to the treasury" value={stats ? formatTokens(BigInt(stats.totalReleased), dec) : "—"} />
         <Figure
           label="Next unlock"

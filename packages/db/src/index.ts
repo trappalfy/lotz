@@ -635,3 +635,20 @@ export interface BoardImages {
 }
 
 export const BOARD_IMAGES_KEY = "board_images";
+
+/** The token's total supply as last read from the mint (base units). */
+export interface TokenSupply {
+  amount: string;
+  at: string;
+}
+export const TOKEN_SUPPLY_KEY = "token_supply";
+
+/** The share card for posts (share of the supply in the lock), at a fixed storage key. */
+export interface ShareCard {
+  key: string;
+  version: number;
+  lockedNow: string;
+  supply: string;
+  date: string;
+}
+export const SHARE_CARD_KEY = "share_card";

@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { COLORS } from "@lotz/imaging";
 import { textCells } from "@lotz/imaging/pixel-font";
 import { STAR, downsample } from "@lotz/brand";
+import { Canvas } from "./canvas";
 
 const W = 1200;
 const H = 630;
@@ -13,35 +14,9 @@ const GRID = 10;
 /** Board snapshot: 500 x 500 px (each lot 5 px), placed on the grid. */
 const BOARD = { x: 80, y: 70, size: 500 };
 
-type RGB = readonly [number, number, number];
-
-class Canvas {
-  readonly buf = Buffer.alloc(W * H * 4);
-  fill(x: number, y: number, w: number, h: number, c: RGB): void {
-    for (let yy = Math.max(0, y); yy < Math.min(H, y + h); yy++) {
-      for (let xx = Math.max(0, x); xx < Math.min(W, x + w); xx++) {
-        const i = (yy * W + xx) * 4;
-        this.buf[i] = c[0];
-        this.buf[i + 1] = c[1];
-        this.buf[i + 2] = c[2];
-        this.buf[i + 3] = 255;
-      }
-    }
-  }
-  cells(cells: boolean[][], x: number, y: number, cell: number, c: RGB, gap = 0): void {
-    cells.forEach((row, cy) =>
-      row.forEach((on, cx) => {
-        if (on) this.fill(x + cx * cell + gap, y + cy * cell + gap, cell - gap * 2, cell - gap * 2, c);
-      }),
-    );
-  }
-}
-
 export async function renderOg(board1x: Uint8Array | null): Promise<Buffer> {
-  const c = new Canvas();
-  c.fill(0, 0, W, H, COLORS.paper);
-  for (let x = 0; x < W; x += GRID) c.fill(x, 0, 1, H, COLORS.grid);
-  for (let y = 0; y < H; y += GRID) c.fill(0, y, W, 1, COLORS.grid);
+  const c = new Canvas(W, H);
+  c.grid(GRID, COLORS.paper, COLORS.grid);
 
   // rulers: ticks every 100 logical px (50 px here), labels in a small cell font
   const { x: bx, y: by, size } = BOARD;

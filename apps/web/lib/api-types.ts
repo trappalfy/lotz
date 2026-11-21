@@ -76,6 +76,8 @@ export interface StatsResponse {
   totalLocked: string;
   totalReleased: string;
   lockedNow: string;
+  /** The token's total supply (base units), null until the indexer has read it. */
+  supply: string | null;
   takeovers: number;
   paused: boolean;
   nextUnlock: { epoch: number; at: string; amount: string } | null;
@@ -149,6 +151,7 @@ export interface StreamStats {
   totalReleased: string;
   freeLotPrice: string;
   paused: boolean;
+  supply: string | null;
 }
 
 export interface StreamBuy {

@@ -9,6 +9,7 @@
     "pause": "tsx src/pause.ts",
     "import-key": "tsx src/import-key.ts",
     "check-mainnet": "tsx src/check-mainnet.ts",
+    "lock-stats": "tsx src/lock-stats.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
