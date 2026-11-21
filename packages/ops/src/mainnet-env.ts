@@ -69,6 +69,7 @@ export function siteEnv(d: Env): Env {
     "NEXT_PUBLIC_X_URL",
     "NEXT_PUBLIC_SOURCE_URL",
     "STREAM_URL",
+    "SITE_ACCESS_KEY",
   ], { ENABLE_EXPERIMENTAL_COREPACK: "1" });
 }
 
