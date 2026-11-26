@@ -1,7 +1,7 @@
 # Запуск Lotz в mainnet
 
 Всё, что касается mainnet, делает владелец (бриф §11). Скрипты в репозитории сами ничего не отправляют:
-`launch` без `--execute` только показывает план, а с `--execute` просит ввести слово `LAUNCH`.
+`launch` без `--execute` только показывает план, а с `--execute` просит ввести слово `LAUNCH` (для таблицы — `TABLE`).
 
 ## Что уже решено
 
@@ -166,32 +166,54 @@ solana program deploy target/deploy/lotz.so \
 Если деплой прервался, повторите ту же команду. Буфер, оставшийся от прерванной попытки, возвращает SOL:
 `solana program close --buffers --keypair keys/admin.json --url <RPC_URL>`.
 
-## Шаг 3. Запуск: initialize, шарды, lookup table (когда есть токен)
+## Шаг 3. За день до токена: lookup table
 
-Сначала пробный запуск. Он проверит минт (freeze authority, расширения Token-2022), treasury и upgrade authority,
-покажет стоимость, цену участка (7000 токенов) и какую долю саплая займёт вся доска. `TOKEN_PRICE_USD` необязателен:
-он только добавляет к плану суммы в долларах.
-
-```sh
-RPC_URL="<RPC_URL>" PROGRAM_ID=LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa \
-TOKEN_MINT=<адрес минта> TREASURY=9PeMBb8kkpRDwRDEQYREgQkqkJKKmbMx1wXzFmoyHNcM \
-ADMIN_KEYPAIR=keys/admin.json BASE_PRICE_TOKENS=7000 \
-TIER_SIZE=1000 TIER_MULT_BPS=12500 MAX_RECT=10 START_PAUSED=true PRIORITY_FEE_MICROLAMPORTS=10000 \
-pnpm --filter @lotz/ops launch
-```
-
-Затем та же команда с `-- --execute`. Скрипт выведет адрес lookup table: впишите его в `LOOKUP_TABLE` на Vercel
-и пересоберите сайт (**Deployments → Redeploy**). Повторный запуск безопасен: сделанные шаги пропускаются.
-
-## Шаг 4. Открыть покупки
-
-Пройдите чек-лист ниже, затем:
+Как только известен CA (адрес минта), впишите его в `TOKEN_MINT` в `.env.mainnet`. Самого токена ещё нет, и это
+нормально: адреса таблицы выводятся из адреса программы и адреса минта. Таблица нужна заранее, потому что
+валидаторы придерживают транзакции с таблицей, пока её последнее изменение не финализировано (~15-20 секунд). В
+момент запуска такой задержки быть не должно.
 
 ```sh
-RPC_URL="<RPC_URL>" PROGRAM_ID=LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa TOKEN_MINT=<минт> \
-TREASURY=9PeMBb8kkpRDwRDEQYREgQkqkJKKmbMx1wXzFmoyHNcM ADMIN_KEYPAIR=keys/admin.json \
-pnpm --filter @lotz/ops pause false
+pnpm --filter @lotz/ops launch -- --mainnet --table             # план: 109 адресов, аренда ~0.019 SOL
+pnpm --filter @lotz/ops launch -- --mainnet --table --execute   # создаёт, просит ввести TABLE
 ```
+
+Скрипт выведет `LOOKUP_TABLE=...`. Впишите его в `.env.mainnet` и отправьте на сайт:
+`pnpm --filter @lotz/ops hosting --apply`. Затем пробный запуск, он ничего не отправляет:
+
+```sh
+pnpm --filter @lotz/ops launch -- --mainnet
+```
+
+План покажет программу и upgrade authority, баланс, цену (7000 токенов), таблицу (`ready`) и стоимость запуска
+(~0.91 SOL: аренда 100 шардов, конфига и хранилищ, комиссии). Токена ещё нет, поэтому строка Token скажет
+`not created yet`.
+
+## Шаг 4. Запуск в момент выхода токена
+
+За несколько минут до создания токена на pump.fun:
+
+```sh
+pnpm --filter @lotz/ops launch -- --mainnet --watch --execute
+```
+
+Скрипт проверит программу, таблицу и баланс, попросит ввести `LAUNCH` и будет ждать минт (websocket и опрос раз в
+секунду). Когда минт появится, скрипт проверит его: 6 знаков, 1 млрд токенов, без freeze authority и без запрещённых
+расширений. Если что-то не так, он ничего не отправит и напишет почему. Если всё в порядке, запуск уходит тремя
+волнами, четыре транзакции:
+
+1. `initialize` (на паузе) и первые 23 шарда;
+2. ещё 62 шарда, две транзакции параллельно;
+3. последние 15 шардов и снятие паузы: покупки открыты.
+
+Каждая транзакция сначала симулируется, затем уходит через Helius и публичный RPC (`SEND_RPC_URLS`) и
+переотправляется, пока не подтвердится. На репетиции на локальном валидаторе покупки открывались через 1.7 секунды
+после появления минта; в mainnet ожидаем несколько секунд. Если что-то не дошло, скрипт перечитывает сеть и
+досылает недостающее; повторный запуск тоже безопасен.
+
+`START_PAUSED=true` оставит покупки на паузе после запуска; тогда открыть их:
+`pnpm --filter @lotz/ops pause false` (с переменными `RPC_URL`, `PROGRAM_ID`, `TOKEN_MINT`, `TREASURY`,
+`ADMIN_KEYPAIR`).
 
 ## Шаг 5. Upgrade authority: оставить
 
@@ -259,7 +281,7 @@ pnpm --filter @lotz/ops wind-down --execute    # закрыть; попроси�
 | `RPC_URL` | ✓ | ✓ | Helius, `https://mainnet.helius-rpc.com/?api-key=…` |
 | `RPC_WS_URL` | | ✓ | Helius, `wss://mainnet.helius-rpc.com/?api-key=…` |
 | `PROGRAM_ID` | ✓ | ✓ | `LotzPiCxGrRhn8of391L6gPNTMnWXNwUdKyuiSoJaaa` |
-| `LOOKUP_TABLE` | ✓ | | из вывода шага 3 |
+| `LOOKUP_TABLE` | ✓ | | из вывода шага 3 (за день до токена) |
 | `NEXT_PUBLIC_CLUSTER` | ✓ | | `mainnet-beta` |
 | `PRIORITY_FEE_MICROLAMPORTS` | ✓ | | `10000` (приоритетная комиссия для покупок) |
 | `ADMIN_WALLET` | ✓ | | `9PeMBb8kkpRDwRDEQYREgQkqkJKKmbMx1wXzFmoyHNcM` |
@@ -284,10 +306,10 @@ pnpm --filter @lotz/ops wind-down --execute    # закрыть; попроси�
 
 Переменные `NEXT_PUBLIC_*` попадают в сборку. После их изменения нужен Redeploy.
 
-## Чек-лист перед открытием покупок
+## Чек-лист перед запуском (до шага 4)
 
 - [ ] `pnpm test:anchor`, `pnpm -r test` и `pnpm --filter @lotz/web e2e` (на локальном стенде) зелёные.
-- [ ] Пробный запуск `launch` с настоящим минтом прошёл без предупреждений.
+- [ ] Пробный запуск `launch -- --mainnet` с CA: таблица `ready`, программа и баланс в порядке.
 - [ ] `https://live.lotz.fun/health` отвечает `{"ok":true}`, в логах Railway есть `initial sync done`.
 - [ ] Сайт с телефона: доска, Buy lots, панель покупки, `/me`.
 - [ ] `prefers-reduced-motion` выключает вспышки и мигание.

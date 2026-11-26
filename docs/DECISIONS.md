@@ -82,3 +82,12 @@ short content. With long links and titles fewer prior ads fit (each prior ad is 
 | S5 | Eyes appear only when the margins are wide enough (≥ 1500 px wide window), at their original cell size on the 10 px grid; two left, one right, at different heights. Purchase rays reach ~45% of the screen, takeover rays reach the edge with a bigger star and two-cell-thick rays. | Brief §7.2–7.3. |
 | S6 | The Lock section says plainly that the program is upgradeable while it is, and who the authority is. No promise about removing it. | Brief §11. |
 | S7 | Demo data uses abstract generated images and neutral titles ("your coin …") with example.com links. | Brief §11: no invented tickers. |
+
+## Launch
+
+| # | Decision | Why |
+|---|---|---|
+| L1 | **The lookup table is made the day before**, from the program and the mint address alone (the mint need not exist); it holds both token programs, as pump.fun mints with either. The launch refuses a table that is incomplete or not finalized. | Measured on a test validator: transactions that use a table are held back until its last extension is finalized (~30 slots, 13-20 s), although simulation and RPC preflight accept them at once. |
+| L2 | **`launch --watch`** waits for the mint (websocket and a poll every second), checks it (6 decimals, 1B supply, no freeze or close authority, allowed extensions only) and sends nothing if it fails. Otherwise four transactions in three rounds: initialize (paused) + 23 shards; 62 shards in two parallel transactions; the last 15 shards + resume buying. | The per-transaction instruction trace limit (64, counting calls into other programs) caps shards at ~31 per transaction (each also calls the System Program). Buying opens only once every shard exists. Rehearsal: open 1.7 s after the mint appeared. |
+| L3 | Each launch transaction is simulated (its compute limit set from it, +10%), sent to every RPC given (Helius, then the public endpoint) and re-sent every 2 s until confirmed; after an expired blockhash the chain is re-read and only what is missing is sent again. Priority 1,000,000 microlamports/CU: ~0.0012 SOL for the ~1.23M CU of the whole launch. | Helius Free allows one `sendTransaction` per second; a second path and re-sending keep a dropped transaction from stalling the launch, for a negligible fee. |
+| L4 | Buying opens at the end of the launch by default (`START_PAUSED=true` keeps it paused). | The owner: everything must work from the first minute. |
