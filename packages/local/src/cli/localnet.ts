@@ -107,7 +107,8 @@ async function main(): Promise<void> {
     const mint = await LocalLotz.createMint(connection, admin);
     const treasury = Keypair.generate().publicKey;
     const lotz = new LocalLotz(connection, admin, { programId: IDL_PROGRAM_ID, mint, tokenProgram: TOKEN_PROGRAM_ID, treasury });
-    await lotz.initialize(admin, { basePrice: 1_000n * TOKEN, tierSize: 1000, tierMultBps: 12_500, maxRect: 10, paused: false });
+    // the same price as mainnet (BASE_PRICE_TOKENS=7000 in packages/ops/src/launch.ts)
+    await lotz.initialize(admin, { basePrice: 7_000n * TOKEN, tierSize: 1000, tierMultBps: 12_500, maxRect: 10, paused: false });
     await lotz.createShards(admin);
     const lookupTable = await lotz.createLookupTable(admin);
     state = { programId: IDL_PROGRAM_ID.toBase58(), mint: mint.toBase58(), treasury: treasury.toBase58(), lookupTable: lookupTable.toBase58() };

@@ -12,7 +12,13 @@ use crate::{
 pub struct InitShard<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
-    #[account(seeds = [CONFIG_SEED], bump = config.bump, has_one = admin @ LotzError::NotAdmin)]
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.bump,
+        has_one = admin @ LotzError::NotAdmin,
+        constraint = !config.retired @ LotzError::Retired,
+    )]
     pub config: Box<Account<'info, Config>>,
     #[account(init, payer = admin, space = 8 + std::mem::size_of::<Shard>(), seeds = [SHARD_SEED, &[index]], bump)]
     pub shard: AccountLoader<'info, Shard>,
@@ -24,5 +30,7 @@ pub fn handle_init_shard(ctx: Context<InitShard>, index: u8) -> Result<()> {
     let mut shard = ctx.accounts.shard.load_init()?;
     shard.index = index;
     shard.bump = ctx.bumps.shard;
+    let config = &mut ctx.accounts.config;
+    config.shards_open = config.shards_open.checked_add(1).ok_or(LotzError::MathOverflow)?;
     Ok(())
 }

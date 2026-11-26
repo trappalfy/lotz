@@ -20,7 +20,8 @@ import { derive, parseEnvFile, type Env } from "./mainnet-env";
 
 const MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
 const UPGRADEABLE_LOADER = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
-const SOL_NEEDED = 7.2;
+/** Deploy 3.243 (465 KB program) + 100 shards 1.214 + lookup table, config and vaults 0.032, and a little margin. */
+const SOL_NEEDED = 4.6;
 const SECRET_KEYS = [
   "HELIUS_API_KEY",
   "RPC_URL",
@@ -192,7 +193,7 @@ for (const [name, key, direct] of [
     try {
       const client = await withTimeout(pool.connect(), 15_000, "database");
       try {
-        const v = (await client.query<{ v: string }>("show server_version")).rows[0]!.v;
+        const v = (await client.query<{ v: string }>("select current_setting('server_version') as v")).rows[0]!.v;
         if (direct) await client.query("listen lotz_check; unlisten lotz_check");
         return ["ok", `Postgres ${v}${direct ? ", LISTEN works (for the indexer)" : " (for the site)"}`];
       } finally {
@@ -208,11 +209,11 @@ await check("Vercel", async () => {
   if (!e.VERCEL_TOKEN) return ["todo", "VERCEL_TOKEN is empty"];
   const q = e.VERCEL_TEAM ? `?slug=${encodeURIComponent(e.VERCEL_TEAM)}` : "";
   const headers = { authorization: `Bearer ${e.VERCEL_TOKEN}` };
-  const user = await fetch(`https://api.vercel.com/v2/user`, { headers });
-  if (!user.ok) return ["fail", `token refused (${user.status})`];
-  if (!e.VERCEL_PROJECT) return ["todo", "token works; VERCEL_PROJECT is empty"];
+  if (!e.VERCEL_PROJECT) return ["todo", "VERCEL_PROJECT is empty"];
+  // straight to the project: a token scoped to a team or project may not read the account (/v2/user answers 404)
   const res = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(e.VERCEL_PROJECT)}${q}`, { headers });
-  if (res.status === 404) return ["todo", `token works; project "${e.VERCEL_PROJECT}" not found${e.VERCEL_TEAM ? "" : " (under a team? set VERCEL_TEAM)"}`];
+  if (res.status === 401 || res.status === 403) return ["fail", `token refused (${res.status})`];
+  if (res.status === 404) return ["todo", `project "${e.VERCEL_PROJECT}" not found with this token${e.VERCEL_TEAM ? "" : " (under a team? set VERCEL_TEAM)"}`];
   if (!res.ok) return ["fail", `project lookup failed (${res.status})`];
   const p = (await res.json()) as { rootDirectory?: string | null; framework?: string | null; link?: { org?: string; repo?: string } };
   const repo = p.link?.repo ? `${p.link.org}/${p.link.repo}` : "no repository";

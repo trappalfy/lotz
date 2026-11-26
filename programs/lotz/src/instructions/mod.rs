@@ -4,6 +4,7 @@ pub mod close_ad;
 pub mod init_shard;
 pub mod initialize;
 pub mod release_epoch;
+pub mod retire;
 pub mod set_paused;
 
 pub use buy::*;
@@ -12,4 +13,5 @@ pub use close_ad::*;
 pub use init_shard::*;
 pub use initialize::*;
 pub use release_epoch::*;
+pub use retire::*;
 pub use set_paused::*;

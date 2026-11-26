@@ -56,6 +56,8 @@ fn check(env: &Env, wallets: &[Keypair]) {
         *net_by_owner.entry(ad.owner).or_default() += held_value.get(&id).copied().unwrap_or(0);
     }
     assert_eq!(env.refund_balance(), refunds_due, "refund vault = unclaimed refunds");
+    let existing = env.ads.values().filter(|a| env.exists(a)).count() as u32;
+    assert_eq!(c.ads_open, existing, "ads_open = ads that exist");
 
     for w in wallets {
         let owned: u64 = net_by_owner.get(&w.pubkey()).copied().unwrap_or(0);

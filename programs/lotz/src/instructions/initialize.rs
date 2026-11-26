@@ -101,6 +101,9 @@ pub fn handle_initialize(ctx: Context<Initialize>, params: InitParams) -> Result
         bump: ctx.bumps.config,
         lock_vault_bump: ctx.bumps.lock_vault,
         refund_vault_bump: ctx.bumps.refund_vault,
+        ads_open: 0,
+        shards_open: 0,
+        retired: false,
     });
 
     emit!(ConfigInitialized {

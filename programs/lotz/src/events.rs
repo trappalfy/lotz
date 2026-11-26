@@ -70,6 +70,23 @@ pub struct AdClosed {
     pub owner: Pubkey,
 }
 
+/// The admin retired the board: no more purchases; accounts are being closed.
+#[event]
+pub struct Retired {
+    /// Tokens still in the lock (they stay there for good if the lock vault cannot be emptied first).
+    pub locked_left: u64,
+    pub ads_open: u32,
+}
+
+/// The config and the vaults were closed: the last step before the program itself can be closed.
+#[event]
+pub struct ConfigClosed {
+    /// Tokens left in the lock vault, which then stays open for good.
+    pub locked_left: u64,
+    /// Tokens someone sent straight to the refund vault (nothing is owed by then); it then stays open for good.
+    pub refund_left: u64,
+}
+
 #[event]
 pub struct EpochReleased {
     pub epoch: u32,

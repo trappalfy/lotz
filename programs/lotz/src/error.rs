@@ -54,4 +54,16 @@ pub enum LotzError {
     InvalidShardIndex,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    #[msg("The board is retired")]
+    Retired,
+    #[msg("Retire the board first")]
+    NotRetired,
+    #[msg("Pause buying first")]
+    NotPaused,
+    #[msg("Ads or shards are still open")]
+    StillOpen,
+    #[msg("A refund is still owed on this ad; pay it out first")]
+    RefundsUnpaid,
+    #[msg("Account is not a Lotz shard")]
+    NotAShard,
 }

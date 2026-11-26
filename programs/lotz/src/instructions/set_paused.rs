@@ -11,6 +11,8 @@ pub struct SetPaused<'info> {
 }
 
 pub fn handle_set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
+    // a retired board stays closed
+    require!(!ctx.accounts.config.retired, LotzError::Retired);
     ctx.accounts.config.paused = paused;
     emit!(PausedSet { paused });
     Ok(())

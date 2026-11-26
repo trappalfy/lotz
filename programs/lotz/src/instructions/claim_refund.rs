@@ -11,22 +11,27 @@ use crate::{
     state::{Ad, Config},
 };
 
-/// The ad's owner takes `refund_due` from the refund vault to their ATA (created if missing).
+/// Sends the ad's `refund_due` from the refund vault to its owner's ATA (created if missing, paid by the caller).
+/// The owner calls it; once the board is retired anyone may, so no refund is left behind. The tokens can only go to
+/// the owner's own ATA either way.
 #[derive(Accounts)]
 pub struct ClaimRefund<'info> {
     #[account(mut)]
-    pub owner: Signer<'info>,
+    pub caller: Signer<'info>,
     #[account(seeds = [CONFIG_SEED], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
     #[account(address = config.token_mint, mint::token_program = token_program)]
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
-    #[account(mut, has_one = owner @ LotzError::NotAdOwner)]
+    #[account(mut, constraint = caller.key() == ad.owner || config.retired @ LotzError::NotAdOwner)]
     pub ad: Box<Account<'info, Ad>>,
+    /// CHECK: the ad's owner; only receives.
+    #[account(address = ad.owner @ LotzError::NotAdOwner)]
+    pub owner: UncheckedAccount<'info>,
     #[account(mut, seeds = [REFUND_VAULT_SEED], bump = config.refund_vault_bump)]
     pub refund_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init_if_needed,
-        payer = owner,
+        payer = caller,
         associated_token::mint = token_mint,
         associated_token::authority = owner,
         associated_token::token_program = token_program,

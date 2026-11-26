@@ -122,7 +122,7 @@ fn no_other_way_out_of_the_lock_vault() {
     // 1. claim_refund with the lock vault in place of the refund vault (Alice has a refund due)
     assert!(env.ad_by_id(1).refund_due > 0);
     let mut ix = env.claim_ix(&alice.pubkey(), &env.ads[&1]);
-    ix.accounts[4].pubkey = lock;
+    ix.accounts[5].pubkey = lock; // refund_vault
     assert_anchor_err(env.send(&[ix], &[&alice]), anchor_lang::error::ErrorCode::ConstraintSeeds);
 
     // 2. a plain token transfer out of the lock vault: its authority is the config PDA, which nobody can sign for

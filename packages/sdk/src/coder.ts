@@ -37,6 +37,11 @@ export interface ConfigAccount {
   totalReleased: bigint;
   nextAdId: number;
   paused: boolean;
+  /** Ads that exist (the config can only be retired at zero). */
+  adsOpen: number;
+  shardsOpen: number;
+  /** Retired for good: no more purchases; accounts are being closed. */
+  retired: boolean;
 }
 
 export interface AdAccount {
@@ -85,6 +90,9 @@ export function decodeConfig(data: Uint8Array): ConfigAccount {
     totalReleased: big(r.total_released),
     nextAdId: num(r.next_ad_id),
     paused: r.paused,
+    adsOpen: r.ads_open,
+    shardsOpen: r.shards_open,
+    retired: r.retired,
   };
 }
 
@@ -337,6 +345,10 @@ export const encodeClaimRefund = () => coder.instruction.encode("claim_refund", 
 export const encodeCloseAd = () => coder.instruction.encode("close_ad", {});
 export const encodeReleaseEpoch = (epoch: number) => coder.instruction.encode("release_epoch", { epoch });
 export const encodeSetPaused = (paused: boolean) => coder.instruction.encode("set_paused", { paused });
+export const encodeRetire = () => coder.instruction.encode("retire", {});
+export const encodeRetireEpoch = (epoch: number) => coder.instruction.encode("retire_epoch", { epoch });
+export const encodeRetireShards = () => coder.instruction.encode("retire_shards", {});
+export const encodeRetireConfig = () => coder.instruction.encode("retire_config", {});
 
 /** Account names of an instruction, in the order the program expects them. */
 export function instructionAccounts(name: string): { name: string; writable: boolean; signer: boolean }[] {

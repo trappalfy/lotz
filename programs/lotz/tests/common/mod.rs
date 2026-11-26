@@ -734,12 +734,18 @@ impl Env {
     }
 
     pub fn claim_ix(&self, owner: &Pubkey, ad: &Pubkey) -> Instruction {
+        self.claim_for_ix(owner, owner, ad)
+    }
+
+    /// `claim_refund` sent by `caller` for the ad owned by `owner` (only allowed once retired unless caller == owner).
+    pub fn claim_for_ix(&self, caller: &Pubkey, owner: &Pubkey, ad: &Pubkey) -> Instruction {
         ix(
             accounts::ClaimRefund {
-                owner: *owner,
+                caller: *caller,
                 config: config_pda(),
                 token_mint: self.mint,
                 ad: *ad,
+                owner: *owner,
                 refund_vault: refund_vault(),
                 owner_token: self.ata(owner),
                 token_program: self.token_program,
@@ -756,7 +762,45 @@ impl Env {
     }
 
     pub fn close_ix(&self, owner: &Pubkey, ad: &Pubkey) -> Instruction {
-        ix(accounts::CloseAd { owner: *owner, ad: *ad }, instruction::CloseAd {})
+        self.close_for_ix(owner, owner, ad)
+    }
+
+    /// `close_ad` sent by `caller` for the ad owned by `owner` (rent always goes to `owner`).
+    pub fn close_for_ix(&self, caller: &Pubkey, owner: &Pubkey, ad: &Pubkey) -> Instruction {
+        ix(
+            accounts::CloseAd { caller: *caller, config: config_pda(), ad: *ad, owner: *owner },
+            instruction::CloseAd {},
+        )
+    }
+
+    pub fn retire_ix(&self, admin: &Pubkey) -> Instruction {
+        ix(accounts::Retire { admin: *admin, config: config_pda() }, instruction::Retire {})
+    }
+
+    pub fn retire_epoch_ix(&self, admin: &Pubkey, epoch: u32) -> Instruction {
+        ix(
+            accounts::RetireEpoch { admin: *admin, config: config_pda(), lock_epoch: epoch_pda(epoch) },
+            instruction::RetireEpoch { epoch },
+        )
+    }
+
+    pub fn retire_shards_ix(&self, admin: &Pubkey, shards: &[Pubkey]) -> Instruction {
+        let mut i = ix(accounts::RetireShards { admin: *admin, config: config_pda() }, instruction::RetireShards {});
+        i.accounts.extend(shards.iter().map(|k| AccountMeta::new(*k, false)));
+        i
+    }
+
+    pub fn retire_config_ix(&self, admin: &Pubkey) -> Instruction {
+        ix(
+            accounts::RetireConfig {
+                admin: *admin,
+                config: config_pda(),
+                lock_vault: lock_vault(),
+                refund_vault: refund_vault(),
+                token_program: self.token_program,
+            },
+            instruction::RetireConfig {},
+        )
     }
 
     pub fn try_close(&mut self, owner: &Keypair, ad_id: u64) -> TransactionResult {

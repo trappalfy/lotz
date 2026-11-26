@@ -117,17 +117,17 @@ test("buy, take over, claim, moderate", async ({ browser }) => {
   await connect(pb);
   await selectRect(pb, spot.x, spot.y, 1, 1);
   await expect(pb.getByText("Taken lots (1.5x)")).toBeVisible();
-  await expect(pb.getByText("1 · 1,500")).toBeVisible();
+  await expect(pb.getByText("1 · 10,500")).toBeVisible();
   await fillAndPay(pb, blue, "your coin, taken");
   await expect.poll(async () => adIdAt(await board(pb), spot.x, spot.y) !== aliceAd, { timeout: 30_000 }).toBe(true);
 
   // --- Alice claims her refund on /me
   const before = await lotz.tokenBalance(alice.publicKey);
   await pa.goto("/me");
-  await expect(pa.getByText("1,000 to claim")).toBeVisible({ timeout: 30_000 });
+  await expect(pa.getByText("7,000 to claim")).toBeVisible({ timeout: 30_000 });
   await pa.getByRole("button", { name: "Claim", exact: true }).first().click();
   await expect(pa.getByText("Claimed. The tokens are in your wallet.")).toBeVisible({ timeout: 60_000 });
-  expect((await lotz.tokenBalance(alice.publicKey)) - before).toBe(1_000n * TOKEN);
+  expect((await lotz.tokenBalance(alice.publicKey)) - before).toBe(7_000n * TOKEN);
 
   // --- the admin hides Bob's ad
   const bobAd = adIdAt(await board(pb), spot.x, spot.y);

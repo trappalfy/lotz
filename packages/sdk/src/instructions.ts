@@ -15,6 +15,10 @@ import {
   encodeInitialize,
   encodeInitShard,
   encodeReleaseEpoch,
+  encodeRetire,
+  encodeRetireConfig,
+  encodeRetireEpoch,
+  encodeRetireShards,
   encodeSetPaused,
   instructionAccounts,
   type BuyArgs,
@@ -109,15 +113,17 @@ export class LotzInstructions {
     );
   }
 
-  claimRefund(owner: PublicKey, ad: PublicKey): TransactionInstruction {
+  /** The owner claims; once the board is retired anyone (`caller`) can send an owner's refund to them. */
+  claimRefund(caller: PublicKey, ad: PublicKey, owner: PublicKey = caller): TransactionInstruction {
     return build(
       this.d.programId,
       "claim_refund",
       {
-        owner,
+        caller,
         config: this.pdas.config(),
         token_mint: this.d.mint,
         ad,
+        owner,
         refund_vault: this.pdas.refundVault(),
         owner_token: ata(owner, this.d.mint, this.d.tokenProgram),
         token_program: this.d.tokenProgram,
@@ -128,8 +134,9 @@ export class LotzInstructions {
     );
   }
 
-  closeAd(owner: PublicKey, ad: PublicKey): TransactionInstruction {
-    return build(this.d.programId, "close_ad", { owner, ad }, encodeCloseAd());
+  /** The owner closes an empty ad; once the board is retired anyone can close any ad. The rent goes to `owner`. */
+  closeAd(caller: PublicKey, ad: PublicKey, owner: PublicKey = caller): TransactionInstruction {
+    return build(this.d.programId, "close_ad", { caller, config: this.pdas.config(), ad, owner }, encodeCloseAd());
   }
 
   releaseEpoch(caller: PublicKey, epoch: number): TransactionInstruction {
@@ -154,6 +161,43 @@ export class LotzInstructions {
 
   setPaused(admin: PublicKey, paused: boolean): TransactionInstruction {
     return build(this.d.programId, "set_paused", { admin, config: this.pdas.config() }, encodeSetPaused(paused));
+  }
+
+  /** Admin, buying paused: retires the board for good (the first step of winding it down). */
+  retire(admin: PublicKey): TransactionInstruction {
+    return build(this.d.programId, "retire", { admin, config: this.pdas.config() }, encodeRetire());
+  }
+
+  /** Admin, once retired: closes a released epoch record. */
+  retireEpoch(admin: PublicKey, epoch: number): TransactionInstruction {
+    return build(
+      this.d.programId,
+      "retire_epoch",
+      { admin, config: this.pdas.config(), lock_epoch: this.pdas.epoch(epoch) },
+      encodeRetireEpoch(epoch),
+    );
+  }
+
+  /** Admin, once retired: closes the given shards. */
+  retireShards(admin: PublicKey, indexes: number[]): TransactionInstruction {
+    const shards = indexes.map((i) => ({ pubkey: this.pdas.shard(i), isWritable: true, isSigner: false }));
+    return build(this.d.programId, "retire_shards", { admin, config: this.pdas.config() }, encodeRetireShards(), shards);
+  }
+
+  /** Admin, once retired, no ad or shard left: closes the empty vaults and the config. */
+  retireConfig(admin: PublicKey): TransactionInstruction {
+    return build(
+      this.d.programId,
+      "retire_config",
+      {
+        admin,
+        config: this.pdas.config(),
+        lock_vault: this.pdas.lockVault(),
+        refund_vault: this.pdas.refundVault(),
+        token_program: this.d.tokenProgram,
+      },
+      encodeRetireConfig(),
+    );
   }
 
   /**

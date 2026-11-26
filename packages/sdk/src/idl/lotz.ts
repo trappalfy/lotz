@@ -175,7 +175,7 @@ export type Lotz = {
     {
       "name": "claimRefund",
       "docs": [
-        "The ad's owner takes the refunds for its lots that were taken over."
+        "The ad's owner takes the refunds for its lots that were taken over (anyone may send them once retired)."
       ],
       "discriminator": [
         15,
@@ -189,12 +189,9 @@ export type Lotz = {
       ],
       "accounts": [
         {
-          "name": "owner",
+          "name": "caller",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "ad"
-          ]
+          "signer": true
         },
         {
           "name": "config",
@@ -220,6 +217,9 @@ export type Lotz = {
         {
           "name": "ad",
           "writable": true
+        },
+        {
+          "name": "owner"
         },
         {
           "name": "refundVault",
@@ -320,7 +320,7 @@ export type Lotz = {
     {
       "name": "closeAd",
       "docs": [
-        "Closes an ad with no live lots and no refund due; the rent goes back to its owner."
+        "Closes an ad with no live lots and no refund due (any ad once retired); the rent goes back to its owner."
       ],
       "discriminator": [
         148,
@@ -334,15 +334,34 @@ export type Lotz = {
       ],
       "accounts": [
         {
-          "name": "owner",
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "ad"
-          ]
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "ad",
+          "writable": true
+        },
+        {
+          "name": "owner",
           "writable": true
         }
       ],
@@ -374,6 +393,7 @@ export type Lotz = {
         },
         {
           "name": "config",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -698,6 +718,267 @@ export type Lotz = {
       ]
     },
     {
+      "name": "retire",
+      "docs": [
+        "Admin only, buying paused. Retires the board for good: no more purchases or resuming."
+      ],
+      "discriminator": [
+        44,
+        138,
+        153,
+        31,
+        222,
+        53,
+        21,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "retireConfig",
+      "docs": [
+        "Admin only, once retired, with no ad or shard left: closes the empty vaults and the config; the rent goes to",
+        "the admin. After this the program can be closed."
+      ],
+      "discriminator": [
+        229,
+        129,
+        66,
+        0,
+        41,
+        235,
+        132,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lockVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "refundVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "retireEpoch",
+      "docs": [
+        "Admin only, once retired: closes a released epoch record; its rent goes to the admin."
+      ],
+      "discriminator": [
+        184,
+        170,
+        245,
+        187,
+        90,
+        144,
+        70,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lockEpoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epoch"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "retireShards",
+      "docs": [
+        "Admin only, once retired: closes the shards passed as remaining accounts; their rent goes to the admin."
+      ],
+      "discriminator": [
+        92,
+        48,
+        86,
+        104,
+        159,
+        166,
+        186,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setPaused",
       "docs": [
         "Admin only. Stops or resumes new purchases."
@@ -817,6 +1098,19 @@ export type Lotz = {
       ]
     },
     {
+      "name": "configClosed",
+      "discriminator": [
+        4,
+        138,
+        208,
+        218,
+        204,
+        236,
+        118,
+        199
+      ]
+    },
+    {
       "name": "configInitialized",
       "discriminator": [
         181,
@@ -879,6 +1173,19 @@ export type Lotz = {
         244,
         208,
         130
+      ]
+    },
+    {
+      "name": "retired",
+      "discriminator": [
+        106,
+        202,
+        161,
+        255,
+        255,
+        39,
+        222,
+        10
       ]
     }
   ],
@@ -1012,6 +1319,36 @@ export type Lotz = {
       "code": 6025,
       "name": "mathOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6026,
+      "name": "retired",
+      "msg": "The board is retired"
+    },
+    {
+      "code": 6027,
+      "name": "notRetired",
+      "msg": "Retire the board first"
+    },
+    {
+      "code": 6028,
+      "name": "notPaused",
+      "msg": "Pause buying first"
+    },
+    {
+      "code": 6029,
+      "name": "stillOpen",
+      "msg": "Ads or shards are still open"
+    },
+    {
+      "code": 6030,
+      "name": "refundsUnpaid",
+      "msg": "A refund is still owed on this ad; pay it out first"
+    },
+    {
+      "code": 6031,
+      "name": "notAShard",
+      "msg": "Account is not a Lotz shard"
     }
   ],
   "types": [
@@ -1215,7 +1552,8 @@ export type Lotz = {
           {
             "name": "admin",
             "docs": [
-              "Can pause and resume new purchases, nothing else. No access to the vaults."
+              "Can pause and resume new purchases and, once paused, retire the board (see `retire`). No access to the",
+              "tokens in the vaults."
             ],
             "type": "pubkey"
           },
@@ -1346,6 +1684,53 @@ export type Lotz = {
           {
             "name": "refundVaultBump",
             "type": "u8"
+          },
+          {
+            "name": "adsOpen",
+            "docs": [
+              "Ads that exist: +1 in `buy`, -1 in `close_ad` / `retire_ad`. The config can only be closed at zero, so no",
+              "owner's rent or refund is ever left behind."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "shardsOpen",
+            "docs": [
+              "Shards created and not yet closed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "retired",
+            "docs": [
+              "Set by `retire`, for good: no more purchases; accounts can be closed and their rent returned."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "configClosed",
+      "docs": [
+        "The config and the vaults were closed: the last step before the program itself can be closed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockedLeft",
+            "docs": [
+              "Tokens left in the lock vault, which then stays open for good."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "refundLeft",
+            "docs": [
+              "Tokens someone sent straight to the refund vault (nothing is owed by then); it then stays open for good."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -1705,6 +2090,28 @@ export type Lotz = {
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "retired",
+      "docs": [
+        "The admin retired the board: no more purchases; accounts are being closed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "lockedLeft",
+            "docs": [
+              "Tokens still in the lock (they stay there for good if the lock vault cannot be emptied first)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "adsOpen",
+            "type": "u32"
           }
         ]
       }

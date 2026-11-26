@@ -37,7 +37,12 @@ pub struct BuyArgs {
 pub struct Buy<'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
-    #[account(mut, seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ LotzError::Paused)]
+    #[account(
+        mut,
+        seeds = [CONFIG_SEED],
+        bump = config.bump,
+        constraint = !config.paused && !config.retired @ LotzError::Paused,
+    )]
     pub config: Box<Account<'info, Config>>,
     #[account(address = config.token_mint, mint::token_program = token_program)]
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
@@ -198,6 +203,7 @@ pub fn handle_buy<'info>(ctx: Context<'info, Buy<'info>>, args: BuyArgs) -> Resu
     config.takeovers = config.takeovers.saturating_add(u64::from(taken_lots));
     config.total_locked = config.total_locked.saturating_add(locked);
     config.next_ad_id = config.next_ad_id.checked_add(1).ok_or(LotzError::MathOverflow)?;
+    config.ads_open = config.ads_open.checked_add(1).ok_or(LotzError::MathOverflow)?;
     let lots_sold = config.lots_sold;
 
     let ad_key = ctx.accounts.ad.key();

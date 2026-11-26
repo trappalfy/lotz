@@ -2,7 +2,7 @@
  * Launch on a real cluster: initialize Lotz, create the 100 shards and the lookup table.
  *
  *   RPC_URL=... PROGRAM_ID=... TOKEN_MINT=... TREASURY=... ADMIN_KEYPAIR=<owner keypair.json> \
- *   BASE_PRICE_USD=5 TOKEN_PRICE_USD=<token price now> TIER_SIZE=1000 TIER_MULT_BPS=12500 MAX_RECT=10 START_PAUSED=true \
+ *   BASE_PRICE_TOKENS=7000 TIER_SIZE=1000 TIER_MULT_BPS=12500 MAX_RECT=10 START_PAUSED=true [TOKEN_PRICE_USD=<for $ figures>] \
  *   pnpm --filter @lotz/ops launch            # dry run: checks and prints the plan and its cost
  *   pnpm --filter @lotz/ops launch --execute  # sends, after you type LAUNCH
  *
@@ -14,7 +14,10 @@ import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, getMint, getMintCloseAuthority
 import { SystemProgram } from "@solana/web3.js";
 import { LotzInstructions, SHARD_ACCOUNT_LEN, tierPrice, fetchConfig, formatTokens, formatTokensExact } from "@lotz/sdk";
 import { confirmTyped, keypair, need, send, sol } from "./common";
-import { basePriceUnits, fullBoardUnits } from "./price";
+import { fullBoardUnits } from "./price";
+
+/** Tier-0 price of a free lot in whole tokens (owner's decision); BASE_PRICE_TOKENS overrides it. */
+const DEFAULT_BASE_PRICE_TOKENS = 7000;
 
 const execute = process.argv.includes("--execute");
 const connection = new Connection(need("RPC_URL"), "confirmed");
@@ -29,15 +32,12 @@ if (!mintInfo) throw new Error("mint not found");
 const tokenProgram = mintInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
 const m = await getMint(connection, mint, "confirmed", tokenProgram);
 const decimals = m.decimals;
-// the price of a free lot: in dollars at today's token price (BASE_PRICE_USD + TOKEN_PRICE_USD), or in whole tokens
-const lotUsd = Number(process.env.BASE_PRICE_USD ?? "");
+// The price of a free lot at tier 0, in whole tokens: the owner's decision is 7000 (2026-11-21). On chain it is
+// 7000 x 10^decimals base units, fixed forever. TOKEN_PRICE_USD only adds dollar figures to the plan.
+const baseTokens = process.env.BASE_PRICE_TOKENS?.trim() || String(DEFAULT_BASE_PRICE_TOKENS);
+if (!/^[1-9][0-9]*$/.test(baseTokens)) throw new Error(`BASE_PRICE_TOKENS must be a whole number of tokens, got "${baseTokens}"`);
 const tokenUsd = Number(process.env.TOKEN_PRICE_USD ?? "");
-if (!process.env.BASE_PRICE_TOKENS && !(lotUsd > 0 && tokenUsd > 0)) {
-  throw new Error("set BASE_PRICE_USD and TOKEN_PRICE_USD (or BASE_PRICE_TOKENS)");
-}
-const basePrice = process.env.BASE_PRICE_TOKENS
-  ? BigInt(process.env.BASE_PRICE_TOKENS) * 10n ** BigInt(decimals)
-  : basePriceUnits(lotUsd, tokenUsd, decimals);
+const basePrice = BigInt(baseTokens) * 10n ** BigInt(decimals);
 const params = {
   basePrice,
   tierSize: Number(process.env.TIER_SIZE ?? 1000),
@@ -78,7 +78,7 @@ Token              ${mint.toBase58()}  ${tokenProgram.equals(TOKEN_2022_PROGRAM_
                    extensions: ${extensions.length ? extensions.join(", ") : "none"}; close authority: ${closeAuthority && !closeAuthority.equals(PublicKey.default) ? `${closeAuthority.toBase58()}  <-- initialize will REFUSE this mint` : "none"}
 Treasury           ${treasury.toBase58()}  (fixed forever)${treasuryOk ? "" : "  <-- not a wallet: initialize will REFUSE it"}
 Price              free lot ${formatTokensExact(params.basePrice, decimals, 6)} tokens at tier 0${usd(params.basePrice)}, x${params.tierMultBps / 10_000} every ${params.tierSize} lots
-                   top tier ${formatTokensExact(top, decimals, 6)} tokens${usd(top)}; every free lot sold once: ${formatTokens(board, decimals)} tokens${usd(board)}
+                   top tier ${formatTokensExact(top, decimals, 6)} tokens${usd(top)}; every free lot sold once: ${formatTokens(board, decimals)} tokens${usd(board)}, ${m.supply > 0n ? `${(Number((board * 10_000n) / m.supply) / 100).toFixed(1)}% of the token's supply` : "supply unknown"}
                    (fixed in tokens forever; dollar figures are at ${tokenUsd > 0 ? `$${tokenUsd} per token` : "an unknown token price"})
 Rectangle          up to ${params.maxRect} x ${params.maxRect}
 Start paused       ${params.paused}

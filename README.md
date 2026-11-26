@@ -18,7 +18,7 @@ The product brief is [LOTZ-SITE-BRIEF.md](LOTZ-SITE-BRIEF.md).
 | [apps/indexer](apps/indexer) | Listens to the program, keeps Postgres in sync, verifies and screens images, renders the board and OG card, serves the live stream |
 | [apps/web](apps/web) | Next.js site and API (runs on Vercel): board, purchase, `/me`, `/admin`, upload, RPC proxy |
 | [packages/local](packages/local) | Local validator setup and demo data (refuses non-local RPCs) |
-| [packages/ops](packages/ops) | Owner tools for a real cluster: launch (dry run by default), pause, import a wallet key |
+| [packages/ops](packages/ops) | Owner tools for a real cluster: launch and wind-down (dry runs by default), pause, import a key, check settings, lock stats |
 | [tests/localnet](tests/localnet) | Smoke tests on a real `solana-test-validator` (run by `anchor test`) |
 | [docs](docs) | [DECISIONS.md](docs/DECISIONS.md), [QUESTIONS.md](docs/QUESTIONS.md), [DEPLOY.md](docs/DEPLOY.md) |
 

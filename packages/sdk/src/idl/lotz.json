@@ -169,7 +169,7 @@
     {
       "name": "claim_refund",
       "docs": [
-        "The ad's owner takes the refunds for its lots that were taken over."
+        "The ad's owner takes the refunds for its lots that were taken over (anyone may send them once retired)."
       ],
       "discriminator": [
         15,
@@ -183,12 +183,9 @@
       ],
       "accounts": [
         {
-          "name": "owner",
+          "name": "caller",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "ad"
-          ]
+          "signer": true
         },
         {
           "name": "config",
@@ -214,6 +211,9 @@
         {
           "name": "ad",
           "writable": true
+        },
+        {
+          "name": "owner"
         },
         {
           "name": "refund_vault",
@@ -314,7 +314,7 @@
     {
       "name": "close_ad",
       "docs": [
-        "Closes an ad with no live lots and no refund due; the rent goes back to its owner."
+        "Closes an ad with no live lots and no refund due (any ad once retired); the rent goes back to its owner."
       ],
       "discriminator": [
         148,
@@ -328,15 +328,34 @@
       ],
       "accounts": [
         {
-          "name": "owner",
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
           "writable": true,
-          "signer": true,
-          "relations": [
-            "ad"
-          ]
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "ad",
+          "writable": true
+        },
+        {
+          "name": "owner",
           "writable": true
         }
       ],
@@ -368,6 +387,7 @@
         },
         {
           "name": "config",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -692,6 +712,267 @@
       ]
     },
     {
+      "name": "retire",
+      "docs": [
+        "Admin only, buying paused. Retires the board for good: no more purchases or resuming."
+      ],
+      "discriminator": [
+        44,
+        138,
+        153,
+        31,
+        222,
+        53,
+        21,
+        16
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "retire_config",
+      "docs": [
+        "Admin only, once retired, with no ad or shard left: closes the empty vaults and the config; the rent goes to",
+        "the admin. After this the program can be closed."
+      ],
+      "discriminator": [
+        229,
+        129,
+        66,
+        0,
+        41,
+        235,
+        132,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lock_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  107,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "refund_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  102,
+                  117,
+                  110,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "retire_epoch",
+      "docs": [
+        "Admin only, once retired: closes a released epoch record; its rent goes to the admin."
+      ],
+      "discriminator": [
+        184,
+        170,
+        245,
+        187,
+        90,
+        144,
+        70,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "lock_epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "epoch"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "epoch",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "retire_shards",
+      "docs": [
+        "Admin only, once retired: closes the shards passed as remaining accounts; their rent goes to the admin."
+      ],
+      "discriminator": [
+        92,
+        48,
+        86,
+        104,
+        159,
+        166,
+        186,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "set_paused",
       "docs": [
         "Admin only. Stops or resumes new purchases."
@@ -811,6 +1092,19 @@
       ]
     },
     {
+      "name": "ConfigClosed",
+      "discriminator": [
+        4,
+        138,
+        208,
+        218,
+        204,
+        236,
+        118,
+        199
+      ]
+    },
+    {
       "name": "ConfigInitialized",
       "discriminator": [
         181,
@@ -873,6 +1167,19 @@
         244,
         208,
         130
+      ]
+    },
+    {
+      "name": "Retired",
+      "discriminator": [
+        106,
+        202,
+        161,
+        255,
+        255,
+        39,
+        222,
+        10
       ]
     }
   ],
@@ -1006,6 +1313,36 @@
       "code": 6025,
       "name": "MathOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6026,
+      "name": "Retired",
+      "msg": "The board is retired"
+    },
+    {
+      "code": 6027,
+      "name": "NotRetired",
+      "msg": "Retire the board first"
+    },
+    {
+      "code": 6028,
+      "name": "NotPaused",
+      "msg": "Pause buying first"
+    },
+    {
+      "code": 6029,
+      "name": "StillOpen",
+      "msg": "Ads or shards are still open"
+    },
+    {
+      "code": 6030,
+      "name": "RefundsUnpaid",
+      "msg": "A refund is still owed on this ad; pay it out first"
+    },
+    {
+      "code": 6031,
+      "name": "NotAShard",
+      "msg": "Account is not a Lotz shard"
     }
   ],
   "types": [
@@ -1209,7 +1546,8 @@
           {
             "name": "admin",
             "docs": [
-              "Can pause and resume new purchases, nothing else. No access to the vaults."
+              "Can pause and resume new purchases and, once paused, retire the board (see `retire`). No access to the",
+              "tokens in the vaults."
             ],
             "type": "pubkey"
           },
@@ -1340,6 +1678,53 @@
           {
             "name": "refund_vault_bump",
             "type": "u8"
+          },
+          {
+            "name": "ads_open",
+            "docs": [
+              "Ads that exist: +1 in `buy`, -1 in `close_ad` / `retire_ad`. The config can only be closed at zero, so no",
+              "owner's rent or refund is ever left behind."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "shards_open",
+            "docs": [
+              "Shards created and not yet closed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "retired",
+            "docs": [
+              "Set by `retire`, for good: no more purchases; accounts can be closed and their rent returned."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigClosed",
+      "docs": [
+        "The config and the vaults were closed: the last step before the program itself can be closed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "locked_left",
+            "docs": [
+              "Tokens left in the lock vault, which then stays open for good."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "refund_left",
+            "docs": [
+              "Tokens someone sent straight to the refund vault (nothing is owed by then); it then stays open for good."
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -1699,6 +2084,28 @@
           {
             "name": "amount",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Retired",
+      "docs": [
+        "The admin retired the board: no more purchases; accounts are being closed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "locked_left",
+            "docs": [
+              "Tokens still in the lock (they stay there for good if the lock vault cannot be emptied first)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "ads_open",
+            "type": "u32"
           }
         ]
       }

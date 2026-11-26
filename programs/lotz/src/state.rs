@@ -8,7 +8,8 @@ use crate::constants::LOTS_PER_SHARD;
 #[account]
 #[derive(InitSpace, Debug)]
 pub struct Config {
-    /// Can pause and resume new purchases, nothing else. No access to the vaults.
+    /// Can pause and resume new purchases and, once paused, retire the board (see `retire`). No access to the
+    /// tokens in the vaults.
     pub admin: Pubkey,
     pub token_mint: Pubkey,
     /// The token program that owns `token_mint` (SPL Token or Token-2022).
@@ -46,6 +47,13 @@ pub struct Config {
     pub bump: u8,
     pub lock_vault_bump: u8,
     pub refund_vault_bump: u8,
+    /// Ads that exist: +1 in `buy`, -1 in `close_ad` / `retire_ad`. The config can only be closed at zero, so no
+    /// owner's rent or refund is ever left behind.
+    pub ads_open: u32,
+    /// Shards created and not yet closed.
+    pub shards_open: u8,
+    /// Set by `retire`, for good: no more purchases; accounts can be closed and their rent returned.
+    pub retired: bool,
 }
 
 /// One lot inside a shard.

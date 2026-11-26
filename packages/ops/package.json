@@ -10,6 +10,8 @@
     "import-key": "tsx src/import-key.ts",
     "check-mainnet": "tsx src/check-mainnet.ts",
     "lock-stats": "tsx src/lock-stats.ts",
+    "wind-down": "tsx src/wind-down.ts",
+    "hosting": "tsx src/hosting.ts",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
@@ -20,5 +22,8 @@
     "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "1.99.0",
     "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@lotz/local": "workspace:*"
   }
 }
