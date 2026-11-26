@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { TOTAL_LOTS, formatCompact, formatInt, formatTokens, shortAddress } from "@lotz/sdk";
+import { TOTAL_LOTS, formatCompact, formatInt, formatShare, formatTokens, shortAddress } from "@lotz/sdk";
 import { useLotz } from "@/lib/client/lotz-context";
 import type { StatsResponse, StreamStats } from "@/lib/api-types";
 import { marketCap } from "@/lib/client/usd";
@@ -39,7 +39,11 @@ export function Counters({ className = "" }: { className?: string }) {
       <Counter label="LOTS" value={s ? `${formatInt(s.lotsSold)} / ${formatInt(TOTAL_LOTS)}` : "—"} />
       {/* before launch there is no price yet (no config on chain): a dash, not a 0 */}
       <Counter label="FREE LOT" value={s && s.freeLotPrice !== "0" ? formatTokens(BigInt(s.freeLotPrice), dec) : "—"} />
-      <Counter label="LOCKED" value={s ? formatCompact(BigInt(s.totalLocked) - BigInt(s.totalReleased), dec) : "—"} />
+      {s?.supply && BigInt(s.supply) > 0n ? (
+        <Counter label="SUPPLY LOCKED" value={formatShare(BigInt(s.totalLocked) - BigInt(s.totalReleased) + BigInt(s.streamflowLocked ?? "0"), BigInt(s.supply))} />
+      ) : (
+        <Counter label="LOCKED" value={s ? formatCompact(BigInt(s.totalLocked) - BigInt(s.totalReleased), dec) : "—"} />
+      )}
       <Counter label="TAKEOVERS" value={s ? formatInt(s.takeovers) : "—"} />
       {mcap && <Counter label="MCAP" value={mcap} />}
     </div>

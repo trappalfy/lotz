@@ -81,6 +81,9 @@ export interface StatsResponse {
   /** Dollars per whole token (the pump.fun curve, then Jupiter) and when that was read; null until known. */
   tokenUsd: number | null;
   priceAt: string | null;
+  /** Base units locked on Streamflow for the token (contracts the sender cannot cancel), and those contracts. */
+  streamflowLocked: string | null;
+  streamflow: { address: string; sender: string; recipient: string; locked: string; unlockAt: number }[];
   takeovers: number;
   paused: boolean;
   nextUnlock: { epoch: number; at: string; amount: string } | null;
@@ -157,6 +160,7 @@ export interface StreamStats {
   supply: string | null;
   tokenUsd: number | null;
   priceAt: string | null;
+  streamflowLocked: string | null;
 }
 
 export interface StreamBuy {

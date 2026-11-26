@@ -29,6 +29,7 @@ import { BoardRenderer, type LotPaint } from "./renderer";
 import { renderOg } from "./og";
 import { renderLockCard } from "./card";
 import { readTokenPrice } from "./price";
+import { readStreamflowLocks } from "./streamflow";
 import type { Chain } from "./chain";
 
 export interface IndexerOptions {
@@ -65,6 +66,8 @@ export interface StreamStats {
   /** Dollars per whole token and when that was read, null until known. */
   tokenUsd: number | null;
   priceAt: string | null;
+  /** Base units locked on Streamflow for the token (non-cancelable contracts), null until read. */
+  streamflowLocked: string | null;
 }
 
 export interface StreamBuy {
@@ -105,6 +108,8 @@ export class Indexer {
   private supply: bigint | null = null;
   /** The token's dollar price, refreshed every 15 s. */
   private price: db.TokenPrice | null = null;
+  /** Tokens locked on Streamflow for the token, refreshed every minute. */
+  private streamflow: db.StreamflowLocked | null = null;
   /** What the published share card shows, to redraw it only when that changes. */
   private cardState = "";
   /** While true (backfill), events update the database and the buffer but nothing is published. */
@@ -134,6 +139,7 @@ export class Indexer {
     const supply = await db.kvGet<db.TokenSupply>(this.pool, db.TOKEN_SUPPLY_KEY);
     this.supply = supply ? BigInt(supply.amount) : null;
     this.price = await db.kvGet<db.TokenPrice>(this.pool, db.TOKEN_PRICE_KEY);
+    this.streamflow = await db.kvGet<db.StreamflowLocked>(this.pool, db.STREAMFLOW_LOCKED_KEY);
     this.cardState = cardStateOf(await db.kvGet<db.ShareCard>(this.pool, db.SHARE_CARD_KEY));
     this.board = (await db.getAllLots(this.pool)).map((l) => ({ adId: l.adId, lastPrice: l.lastPrice }));
     this.ads = new Map((await db.getLiveAds(this.pool)).map((a) => [a.adId, a]));
@@ -563,7 +569,27 @@ export class Indexer {
       supply: this.supply?.toString() ?? null,
       tokenUsd: this.price?.usd ?? null,
       priceAt: this.price?.at ?? null,
+      streamflowLocked: this.streamflow?.total ?? null,
     };
+  }
+
+  /** Reads the token's Streamflow locks; publishes when the total changes. */
+  async refreshStreamflow(): Promise<void> {
+    const c = this.config;
+    if (!c) return;
+    let next: db.StreamflowLocked;
+    try {
+      next = await readStreamflowLocks(this.o.chain.connection, new PublicKey(c.tokenMint));
+    } catch (e) {
+      this.log("streamflow read failed", { error: String(e) });
+      return;
+    }
+    const changed = next.total !== this.streamflow?.total;
+    await this.enqueue(async () => {
+      this.streamflow = next;
+      await db.kvSet(this.pool, db.STREAMFLOW_LOCKED_KEY, next);
+      if (changed) await this.flush("price");
+    });
   }
 
   /** Reads the token's dollar price and publishes it. A failed read keeps the last price (the site shows its age). */

@@ -118,6 +118,7 @@ export function LotzProvider({ children }: { children: ReactNode }) {
             supply: s.supply,
             tokenUsd: s.tokenUsd,
             priceAt: s.priceAt,
+            streamflowLocked: s.streamflowLocked,
           });
           const key = `${s.lotsSold}/${s.takeovers}/${s.totalLocked}/${s.paused}`;
           if (last && key !== last) void refreshBoard();
