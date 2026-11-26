@@ -20,8 +20,11 @@ import { derive, parseEnvFile, type Env } from "./mainnet-env";
 
 const MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
 const UPGRADEABLE_LOADER = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
-/** Deploy 3.243 (465 KB program) + 100 shards 1.214 + lookup table, config and vaults 0.032, and a little margin. */
-const SOL_NEEDED = 4.6;
+/**
+ * Mainnet rent (read 2026-11-26): deploy 2.365 (465 KB program) + launch 0.91 (100 shards 0.886, config, vaults,
+ * fees) + lookup table 0.019 = 3.29, and a margin.
+ */
+const SOL_NEEDED = 3.4;
 const SECRET_KEYS = [
   "HELIUS_API_KEY",
   "RPC_URL",
