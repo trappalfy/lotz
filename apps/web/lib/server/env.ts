@@ -4,6 +4,13 @@ import "server-only";
 export const env = {
   databaseUrl: () => required("DATABASE_URL"),
   rpcUrl: () => required("RPC_URL"),
+  /** Where /api/rpc retries when RPC_URL is rate limited or down: the public endpoint on mainnet ("none": nowhere). */
+  rpcFallbackUrl: () => {
+    const v = process.env.RPC_FALLBACK_URL?.trim();
+    if (v === "none") return null;
+    if (v) return v;
+    return (process.env.NEXT_PUBLIC_CLUSTER || "localnet") === "mainnet-beta" ? "https://api.mainnet-beta.solana.com" : null;
+  },
   programId: () => required("PROGRAM_ID"),
   lookupTable: () => process.env.LOOKUP_TABLE || null,
   /** Wallets allowed into /admin (comma-separated). */

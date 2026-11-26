@@ -61,7 +61,7 @@ function Stepper({ label, value, min, max, onChange }: { label: string; value: n
 export function BuyPanel() {
   const { board, info, connection, ixs, stats } = useLotz();
   const { rect, setRect, setSelecting } = useSelection();
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const { open: openWallet } = useWalletModal();
   const dec = info?.tokenDecimals ?? 6;
   const maxRect = board?.params?.maxRect ?? 10;
@@ -86,21 +86,28 @@ export function BuyPanel() {
   }, [rect, board]);
   const quote = chainQuote ?? localQuote;
 
+  // One on-chain quote shortly after the selection settles. Between purchases the indexed board (live stream) keeps
+  // the local quote current, and paying re-quotes from the chain anyway: no polling, so a crowd of open panels does
+  // not use up the RPC allowance.
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const boardReady = !!board;
   useEffect(() => {
     setChainQuote(null);
-    if (!rect || !connection || !ixs || !board) return;
+    if (!rect || !connection || !ixs || !boardReady) return;
     let alive = true;
-    const load = () =>
-      freshQuote(connection, ixs, board, rect, publicKey)
+    const t = setTimeout(() => {
+      const b = boardRef.current;
+      if (!b) return;
+      freshQuote(connection, ixs, b, rect, publicKey)
         .then((q) => alive && setChainQuote(q.quote))
         .catch(() => {});
-    void load();
-    const t = setInterval(load, 10_000);
+    }, 400);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearTimeout(t);
     };
-  }, [rect, connection, ixs, board, publicKey]);
+  }, [rect, connection, ixs, boardReady, publicKey]);
 
   useEffect(() => {
     if (!publicKey || !connection || !ixs) {
@@ -167,7 +174,7 @@ export function BuyPanel() {
 
   const pay = async () => {
     setTouched(true);
-    if (!canPay || !publicKey || !signTransaction || !connection || !ixs || !board || !quote || !file || !crop) return;
+    if (!canPay || !publicKey || !connection || !ixs || !board || !quote || !file || !crop) return;
     setError(null);
     try {
       if (!upload.current) {
@@ -188,7 +195,7 @@ export function BuyPanel() {
         ixs,
         board,
         publicKey,
-        signTransaction,
+        sendTransaction,
         rect,
         { imageHash: hash, imageUri: upload.current.uri, link: link.trim(), title: title.trim() },
         quote.total,

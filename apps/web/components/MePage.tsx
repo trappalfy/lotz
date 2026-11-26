@@ -27,7 +27,7 @@ type Ad = MeResponse["ads"][number];
 
 export function MePage() {
   const { connection, ixs, info, tick } = useLotz();
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const { open } = useWalletModal();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -63,13 +63,13 @@ export function MePage() {
   const claim = (ads: Ad[]) =>
     act(
       ads.length === 1 ? `claim:${ads[0]!.id}` : "claim:all",
-      () => claimRefunds(connection!, ixs!, publicKey!, signTransaction!, ads.map((a) => new PublicKey(a.address)), info?.lookupTable ?? null),
+      () => claimRefunds(connection!, ixs!, publicKey!, sendTransaction, ads.map((a) => new PublicKey(a.address)), info?.lookupTable ?? null),
       "Claimed. The tokens are in your wallet.",
     );
   const close = (ads: Ad[]) =>
     act(
       ads.length === 1 ? `close:${ads[0]!.id}` : "close:all",
-      () => closeAds(connection!, ixs!, publicKey!, signTransaction!, ads.map((a) => new PublicKey(a.address)), info?.lookupTable ?? null),
+      () => closeAds(connection!, ixs!, publicKey!, sendTransaction, ads.map((a) => new PublicKey(a.address)), info?.lookupTable ?? null),
       "Closed. The rent is back in your wallet.",
     );
 
@@ -77,7 +77,7 @@ export function MePage() {
   const closed = me?.ads.filter((a) => a.closed) ?? [];
   const claimable = open_.filter((a) => BigInt(a.refundDue) > 0n);
   const closable = open_.filter((a) => a.canClose);
-  const ready = !!connection && !!ixs && !!signTransaction;
+  const ready = !!connection && !!ixs && !!publicKey;
 
   return (
     <>

@@ -1,5 +1,5 @@
 /** The purchase flow against the chain: fresh quote, transaction, send. */
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
 import {
   LotzInstructions,
   MAX_PRIOR_ADS,
@@ -7,11 +7,10 @@ import {
   ata,
   buyComputeUnits,
   buyEpoch,
-  chainTime,
   computeBudgetIxs,
+  decodeConfig,
+  decodeShard,
   emptyBoard,
-  fetchConfig,
-  fetchShards,
   quoteRect,
   randomNonce,
   shardsForRect,
@@ -20,7 +19,8 @@ import {
   type Rect,
 } from "@lotz/sdk";
 import type { BoardData } from "./board-data";
-import { prepare, signAndSend, simulateUnits, type SignTx } from "./send";
+import { bus } from "./bus";
+import { prepare, signAndSend, simulateUnits, type SendTx } from "./send";
 
 export interface FreshQuote {
   quote: Quote;
@@ -28,6 +28,8 @@ export interface FreshQuote {
   priorAds: PublicKey[];
   /** Ids of prior ads owned by the buyer (the program refuses taking your own lot). */
   ownAdIds: number[];
+  /** Chain time (unix seconds) when quoted. */
+  now: number;
 }
 
 export class BoardBehindError extends Error {
@@ -36,7 +38,7 @@ export class BoardBehindError extends Error {
   }
 }
 
-/** Prices the rectangle from the shards as they are on-chain right now. */
+/** Prices the rectangle from the shards as they are on-chain right now (config, clock and shards in one request). */
 export async function freshQuote(
   connection: Connection,
   ixs: LotzInstructions,
@@ -44,13 +46,17 @@ export async function freshQuote(
   rect: Rect,
   buyer: PublicKey | null,
 ): Promise<FreshQuote> {
-  const [config, shards] = await Promise.all([
-    fetchConfig(connection, ixs.pdas),
-    fetchShards(connection, ixs.pdas, shardsForRect(rect)),
-  ]);
-  if (!config) throw new Error("Lotz is not initialized on this cluster.");
+  const indexes = shardsForRect(rect);
+  const [configInfo, clockInfo, ...shardInfos] = await connection.getMultipleAccountsInfo(
+    [ixs.pdas.config(), SYSVAR_CLOCK_PUBKEY, ...indexes.map((i) => ixs.pdas.shard(i))],
+    "confirmed",
+  );
+  if (!configInfo) throw new Error("Lotz is not initialized on this cluster.");
+  if (!clockInfo) throw new Error("no clock sysvar");
+  const config = decodeConfig(configInfo.data);
+  const now = Number(new DataView(clockInfo.data.buffer, clockInfo.data.byteOffset).getBigInt64(32, true));
   const lots = emptyBoard();
-  for (const [index, l] of shards) applyShard(lots, { index, lots: l });
+  for (const info of shardInfos) if (info) applyShard(lots, decodeShard(info.data));
   const quote = quoteRect(lots, rect, config);
   const priorAds: PublicKey[] = [];
   const ownAdIds: number[] = [];
@@ -60,7 +66,7 @@ export async function freshQuote(
     if (buyer && ad.owner === buyer.toBase58()) ownAdIds.push(id);
     priorAds.push(new PublicKey(ad.address));
   }
-  return { quote, config, priorAds, ownAdIds };
+  return { quote, config, priorAds, ownAdIds, now };
 }
 
 export async function tokenBalance(connection: Connection, ixs: LotzInstructions, owner: PublicKey): Promise<bigint> {
@@ -88,7 +94,7 @@ export async function buy(
   ixs: LotzInstructions,
   board: BoardData,
   buyer: PublicKey,
-  sign: SignTx,
+  send: SendTx,
   rect: Rect,
   content: BuyContent,
   acceptUpTo: bigint,
@@ -96,7 +102,7 @@ export async function buy(
   onStatus?: (s: "quoting" | "signing" | "sending" | "confirming") => void,
 ): Promise<{ signature: string; total: bigint }> {
   onStatus?.("quoting");
-  const fq = await freshQuote(connection, ixs, board, rect, buyer);
+  const [fq, recent] = await Promise.all([freshQuote(connection, ixs, board, rect, buyer), connection.getLatestBlockhash("confirmed")]);
   if (fq.ownAdIds.length) throw new Error("You already own some of these lots. Move or shrink the selection.");
   if (fq.priorAds.length > MAX_PRIOR_ADS) {
     throw new Error(`This spot takes lots from ${fq.priorAds.length} ads; at most ${MAX_PRIOR_ADS} per purchase. Make it smaller.`);
@@ -104,13 +110,12 @@ export async function buy(
   if (fq.quote.total > acceptUpTo) {
     throw new PriceMovedError(fq.quote.total);
   }
-  const now = await chainTime(connection);
   const ix = ixs.buy(
     buyer,
     {
       nonce: randomNonce(),
       ...rect,
-      epoch: buyEpoch(now, fq.config),
+      epoch: buyEpoch(fq.now, fq.config),
       maxTotal: fq.quote.total,
       imageHash: content.imageHash,
       imageUri: content.imageUri,
@@ -121,12 +126,35 @@ export async function buy(
   );
   // size check first (a probe with the largest limit), then the real limit from a simulation
   const fallback = buyComputeUnits(rect.w * rect.h, fq.priorAds.length);
-  await prepare(connection, buyer, [...computeBudgetIxs(fallback, opts.priorityMicroLamports), ix], opts.lookupTable);
+  await prepare(connection, buyer, [...computeBudgetIxs(fallback, opts.priorityMicroLamports), ix], opts.lookupTable, recent);
   const used = await simulateUnits(connection, buyer, [...computeBudgetIxs(400_000, 0), ix], opts.lookupTable);
   const units = used ? Math.min(400_000, Math.ceil(used * 1.15) + 10_000) : fallback;
-  const prepared = await prepare(connection, buyer, [...computeBudgetIxs(units, opts.priorityMicroLamports), ix], opts.lookupTable);
-  const signature = await signAndSend(connection, sign, prepared, onStatus);
-  return { signature, total: fq.quote.total };
+  const prepared = await prepare(connection, buyer, [...computeBudgetIxs(units, opts.priorityMicroLamports), ix], opts.lookupTable, recent);
+  const stream = watchStream();
+  try {
+    const signature = await signAndSend(connection, send, prepared, onStatus, stream.seen);
+    return { signature, total: fq.quote.total };
+  } finally {
+    stream.stop();
+  }
+}
+
+/** Purchases the live stream reports (from before the signature is known, so none slips through). */
+function watchStream(): { seen: (signature: string) => Promise<void>; stop: () => void } {
+  const got = new Set<string>();
+  let want: string | null = null;
+  let done: (() => void) | null = null;
+  const stop = bus.on("buy", (b) => {
+    got.add(b.signature);
+    if (b.signature === want) done?.();
+  });
+  return {
+    seen: (signature) => {
+      want = signature;
+      return got.has(signature) ? Promise.resolve() : new Promise<void>((r) => (done = r));
+    },
+    stop,
+  };
 }
 
 export class PriceMovedError extends Error {

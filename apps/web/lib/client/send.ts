@@ -1,14 +1,24 @@
-/** Signing and sending transactions through the wallet, with polled confirmation (no websocket through the proxy). */
+/**
+ * Transactions go out through the wallet: a wallet that can send does it through its own RPC (none of the site's
+ * RPC allowance is spent); others sign, and wallet-adapter sends through the site's RPC. Confirmation comes from the
+ * site's live stream when it reports the signature, or from polling, whichever is first.
+ */
 import {
   AddressLookupTableAccount,
   Connection,
   PublicKey,
+  type Commitment,
   type TransactionInstruction,
   type VersionedTransaction,
 } from "@solana/web3.js";
 import { buildV0, MAX_TX_BYTES } from "@lotz/sdk";
 
-export type SignTx = <T extends VersionedTransaction>(tx: T) => Promise<T>;
+/** wallet-adapter's `sendTransaction` (from `useWallet()`). */
+export type SendTx = (
+  tx: VersionedTransaction,
+  connection: Connection,
+  options?: { skipPreflight?: boolean; preflightCommitment?: Commitment; maxRetries?: number },
+) => Promise<string>;
 
 const tables = new Map<string, AddressLookupTableAccount>();
 
@@ -39,8 +49,8 @@ export async function simulateUnits(
   lookupTableAddress: string | null,
 ): Promise<number | null> {
   const alts = await lookupTable(connection, lookupTableAddress);
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
-  const tx = buildV0(payer, ixs, blockhash, alts);
+  // the node puts in a recent blockhash itself
+  const tx = buildV0(payer, ixs, PublicKey.default.toBase58(), alts);
   let res;
   try {
     res = await connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true, commitment: "confirmed" });
@@ -53,16 +63,22 @@ export async function simulateUnits(
   return res.value.unitsConsumed ?? null;
 }
 
-/** Builds a v0 transaction; throws TooLargeError if it cannot fit in one packet. */
+export interface Blockhash {
+  blockhash: string;
+  lastValidBlockHeight: number;
+}
+
+/** Builds a v0 transaction (with `recent`, or a blockhash fetched now); throws TooLargeError if it cannot fit in one packet. */
 export async function prepare(
   connection: Connection,
   payer: PublicKey,
   ixs: TransactionInstruction[],
   lookupTableAddress: string | null,
+  recent?: Blockhash,
 ): Promise<{ tx: VersionedTransaction; blockhash: string; lastValidBlockHeight: number }> {
   const [alts, { blockhash, lastValidBlockHeight }] = await Promise.all([
     lookupTable(connection, lookupTableAddress),
-    connection.getLatestBlockhash("confirmed"),
+    recent ?? connection.getLatestBlockhash("confirmed"),
   ]);
   const tx = buildV0(payer, ixs, blockhash, alts);
   let size: number;
@@ -75,35 +91,46 @@ export async function prepare(
   return { tx, blockhash, lastValidBlockHeight };
 }
 
-/** Signs with the wallet, sends (preflight on), waits until confirmed. Returns the signature. */
+/**
+ * Has the wallet sign and send, then waits until confirmed. `seen(signature)` resolves when the live stream reports
+ * the transaction (it only reports ones that succeeded). Returns the signature.
+ */
 export async function signAndSend(
   connection: Connection,
-  sign: SignTx,
+  send: SendTx,
   prepared: { tx: VersionedTransaction; lastValidBlockHeight: number },
   onStatus?: (s: "signing" | "sending" | "confirming") => void,
+  seen?: (signature: string) => Promise<void>,
 ): Promise<string> {
   onStatus?.("signing");
-  const signed = await sign(prepared.tx);
-  onStatus?.("sending");
-  const raw = signed.serialize();
-  const sig = await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed", maxRetries: 0 });
+  const sig = await send(prepared.tx, connection, { skipPreflight: false, preflightCommitment: "confirmed", maxRetries: 5 });
   onStatus?.("confirming");
+  await confirmed(connection, sig, prepared.lastValidBlockHeight, seen?.(sig));
+  return sig;
+}
+
+const POLL_MS = 1_500;
+
+/** Polls the signature (and, now and then, the block height for expiry) until confirmed, or until `seen` resolves. */
+export async function confirmed(connection: Connection, sig: string, lastValidBlockHeight: number, seen?: Promise<void>): Promise<void> {
+  let streamed = false;
+  const wake = seen?.then(() => {
+    streamed = true;
+  });
+  wake?.catch(() => {});
   const started = Date.now();
-  let resent = Date.now();
-  for (;;) {
-    const { value } = await connection.getSignatureStatuses([sig]);
-    const st = value[0];
+  for (let round = 1; ; round++) {
+    if (streamed) return;
+    const st = (await connection.getSignatureStatuses([sig]).catch(() => null))?.value[0];
     if (st?.err) throw new Error(`transaction failed: ${JSON.stringify(st.err)}`);
-    if (st && (st.confirmationStatus === "confirmed" || st.confirmationStatus === "finalized")) return sig;
-    const height = await connection.getBlockHeight("confirmed");
-    if (height > prepared.lastValidBlockHeight) throw new Error("block height exceeded");
-    if (Date.now() - resent > 2_000) {
-      // rebroadcast until it lands (same signature, so it can only land once)
-      void connection.sendRawTransaction(raw, { skipPreflight: true, maxRetries: 0 }).catch(() => {});
-      resent = Date.now();
+    if (st && (st.confirmationStatus === "confirmed" || st.confirmationStatus === "finalized")) return;
+    // a blockhash lasts about a minute: check for expiry only every few rounds
+    if (round % 5 === 0) {
+      const height = await connection.getBlockHeight("confirmed").catch(() => 0);
+      if (height > lastValidBlockHeight) throw new Error("block height exceeded");
     }
     if (Date.now() - started > 90_000) throw new Error("block height exceeded");
-    await new Promise((r) => setTimeout(r, 800));
+    await Promise.race([new Promise((r) => setTimeout(r, POLL_MS)), wake].filter(Boolean));
   }
 }
 
