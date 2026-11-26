@@ -23,7 +23,7 @@ export default defineRailway(() => {
     // (Neon, AWS us-east-1). The key is Railway's region ID; the "us-east" alias is not understood here.
     replicas: { "us-east4-eqdc4a": 1 },
     // live.lotz.fun was added with `railway domain` (configuration cannot register a domain); listed so apply keeps it
-    networking: { privateNetworkEndpoint: "lotzindexer", customDomains: { "live.lotz.fun": {} } },
+    networking: { privateNetworkEndpoint: "lotzindexer", customDomains: { "live.lotz.fun": { port: 8080 } } },
   });
 
   return project("triumphant-benevolence", {
