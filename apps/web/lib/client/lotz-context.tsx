@@ -69,7 +69,8 @@ export function LotzProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (msg.stats) setStats(msg.stats);
-        if (msg.type === "hello") return;
+        // a new token price changes only the counters, not the board
+        if (msg.type === "hello" || msg.type === "price") return;
         if (msg.type === "buy") {
           bus.emit("buy", msg.buy);
           setTick((t) => t + 1);

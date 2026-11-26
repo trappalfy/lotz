@@ -17,6 +17,7 @@ import { useLotz } from "@/lib/client/lotz-context";
 import { BoardBehindError, PriceMovedError, buy, freshQuote, tokenBalance } from "@/lib/client/buy";
 import { explainError } from "@/lib/client/errors";
 import { TooLargeError, explorerTx } from "@/lib/client/send";
+import { usdOf } from "@/lib/client/usd";
 import { useSelection } from "./selection";
 import { useWalletModal } from "./WalletModal";
 import { ImageCropper, type Crop } from "./ImageCropper";
@@ -282,6 +283,9 @@ export function BuyPanel() {
                   <Row label="Goes back to previous owners" value={formatTokens(quote.refunds, dec)} />
                   <div className="my-1 border-t border-grid" />
                   <Row label="You pay" value={formatTokens(quote.total, dec)} strong />
+                  {usdOf(quote.total, dec, stats) && (
+                    <p className="num text-right text-[12px] text-mute">{usdOf(quote.total, dec, stats)} at the current token price</p>
+                  )}
                   {balance !== null && (
                     <p className={`num mt-1 text-right text-[12px] ${short ? "text-ink font-semibold" : "text-mute"}`}>
                       {short ? `You have ${formatTokens(balance, dec)}. Not enough.` : `You have ${formatTokens(balance, dec)}`}

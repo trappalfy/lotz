@@ -85,7 +85,9 @@ beforeAll(async () => {
 
   // stand-in for the image model: flags pure magenta images
   const screen = async (raw: Uint8Array) => raw[0] === 0xff && raw[1] === 0x00 && raw[2] === 0xff;
-  indexer = new Indexer({ chain: new Chain(connection, IDL_PROGRAM_ID), pool, storage, log: () => {}, screen });
+  // stand-in for the price sources (price.test.ts covers them)
+  const price = async ({ decimals }: { decimals: number }) => ({ usd: decimals === 6 ? 0.00002 : 0, source: "test", at: "2026-11-26T12:00:00.000Z" });
+  indexer = new Indexer({ chain: new Chain(connection, IDL_PROGRAM_ID), pool, storage, log: () => {}, screen, price });
   await indexer.init();
 }, 180_000);
 
@@ -269,6 +271,16 @@ describe("indexer", () => {
     // same numbers: not redrawn
     await indexer.periodic();
     expect((await db.kvGet<db.ShareCard>(pool, db.SHARE_CARD_KEY))!.version).toBe(card!.version);
+  });
+
+  it("publishes the token's dollar price and keeps it in the database", async () => {
+    const before = messages.length;
+    await indexer.refreshPrice();
+    for (let i = 0; i < 50 && !messages.slice(before).some((m) => m.type === "price"); i++) await new Promise((r) => setTimeout(r, 20));
+    const msg = messages.slice(before).find((m) => m.type === "price");
+    expect(msg?.stats.tokenUsd).toBe(0.00002);
+    expect(msg?.stats.priceAt).toBe("2026-11-26T12:00:00.000Z");
+    expect((await db.kvGet<db.TokenPrice>(pool, db.TOKEN_PRICE_KEY))?.usd).toBe(0.00002);
   });
 
   it("renders the OG card", async () => {

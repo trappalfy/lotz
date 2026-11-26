@@ -4,7 +4,7 @@
  * A full reconciliation from account state (shards, ads, epochs, config) runs at start and periodically, so a
  * missed or reordered event can never leave the board wrong for long.
  */
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, type Connection } from "@solana/web3.js";
 import {
   BOARD_SIDE,
   SHARD_COUNT,
@@ -28,6 +28,7 @@ import { contentTypeOf, IMMUTABLE, type Storage } from "@lotz/storage";
 import { BoardRenderer, type LotPaint } from "./renderer";
 import { renderOg } from "./og";
 import { renderLockCard } from "./card";
+import { readTokenPrice } from "./price";
 import type { Chain } from "./chain";
 
 export interface IndexerOptions {
@@ -42,13 +43,15 @@ export interface IndexerOptions {
    * could not run (the ad stays up; moderators can still hide it).
    */
   screen?: (raw: Uint8Array, width: number, height: number) => Promise<boolean | null>;
+  /** Reads the token's dollar price (default: the pump.fun curve, then Jupiter; see price.ts). */
+  price?: (o: { connection: Connection; mint: PublicKey; decimals: number }) => Promise<db.TokenPrice | null>;
 }
 
 /** What the site's stream receives (kept small: pg_notify payloads are capped at 8 kB). */
 export type StreamMessage =
   | { type: "board"; board: db.BoardImages; stats: StreamStats }
   | { type: "buy"; buy: StreamBuy; board: db.BoardImages; stats: StreamStats }
-  | { type: "refund" | "close" | "release" | "pause"; board: db.BoardImages; stats: StreamStats };
+  | { type: "refund" | "close" | "release" | "pause" | "price"; board: db.BoardImages; stats: StreamStats };
 
 export interface StreamStats {
   lotsSold: number;
@@ -59,6 +62,9 @@ export interface StreamStats {
   paused: boolean;
   /** The token's total supply (base units), null until read. */
   supply: string | null;
+  /** Dollars per whole token and when that was read, null until known. */
+  tokenUsd: number | null;
+  priceAt: string | null;
 }
 
 export interface StreamBuy {
@@ -97,6 +103,8 @@ export class Indexer {
   private config: db.ConfigRow | null = null;
   /** The token's total supply (base units), refreshed every minute. */
   private supply: bigint | null = null;
+  /** The token's dollar price, refreshed every 15 s. */
+  private price: db.TokenPrice | null = null;
   /** What the published share card shows, to redraw it only when that changes. */
   private cardState = "";
   /** While true (backfill), events update the database and the buffer but nothing is published. */
@@ -125,6 +133,7 @@ export class Indexer {
     this.config = await db.getConfig(this.pool);
     const supply = await db.kvGet<db.TokenSupply>(this.pool, db.TOKEN_SUPPLY_KEY);
     this.supply = supply ? BigInt(supply.amount) : null;
+    this.price = await db.kvGet<db.TokenPrice>(this.pool, db.TOKEN_PRICE_KEY);
     this.cardState = cardStateOf(await db.kvGet<db.ShareCard>(this.pool, db.SHARE_CARD_KEY));
     this.board = (await db.getAllLots(this.pool)).map((l) => ({ adId: l.adId, lastPrice: l.lastPrice }));
     this.ads = new Map((await db.getLiveAds(this.pool)).map((a) => [a.adId, a]));
@@ -151,15 +160,12 @@ export class Indexer {
         this.seen.add(signature);
         return;
       }
-      const tx = await this.o.chain.connection.getTransaction(signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
+      const tx = await this.o.chain.transaction(signature);
       if (!tx) throw new Error(`transaction ${signature} not found`);
       this.seen.add(signature);
-      if (!tx.meta?.err) {
+      if (!tx.err) {
         const blockTime = tx.blockTime ? new Date(tx.blockTime * 1000) : new Date();
-        await this.applyLogs(signature, tx.slot, blockTime, tx.meta?.logMessages ?? []);
+        await this.applyLogs(signature, tx.slot, blockTime, tx.logs);
       }
       await db.markProcessed(this.pool, [signature]);
     });
@@ -555,7 +561,28 @@ export class Indexer {
       freeLotPrice: free.toString(),
       paused: c?.paused ?? false,
       supply: this.supply?.toString() ?? null,
+      tokenUsd: this.price?.usd ?? null,
+      priceAt: this.price?.at ?? null,
     };
+  }
+
+  /** Reads the token's dollar price and publishes it. A failed read keeps the last price (the site shows its age). */
+  async refreshPrice(): Promise<void> {
+    const c = this.config;
+    if (!c) return;
+    let p: db.TokenPrice | null = null;
+    try {
+      p = await (this.o.price ?? readTokenPrice)({ connection: this.o.chain.connection, mint: new PublicKey(c.tokenMint), decimals: c.tokenDecimals });
+    } catch (e) {
+      this.log("token price read failed", { error: String(e) });
+    }
+    if (!p) return;
+    const price = p;
+    await this.enqueue(async () => {
+      this.price = price;
+      await db.kvSet(this.pool, db.TOKEN_PRICE_KEY, price);
+      await this.flush("price");
+    });
   }
 
   /** Reads the token's total supply from the mint; it changes with mints and burns. */

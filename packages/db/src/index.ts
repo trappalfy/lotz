@@ -748,6 +748,15 @@ export interface TokenSupply {
 }
 export const TOKEN_SUPPLY_KEY = "token_supply";
 
+/** The token's dollar price, for approximate figures on the site (the indexer refreshes it every 15 s). */
+export interface TokenPrice {
+  /** Dollars per whole token. */
+  usd: number;
+  source: string;
+  at: string;
+}
+export const TOKEN_PRICE_KEY = "token_price";
+
 /** The share card for posts (share of the supply in the lock), at a fixed storage key. */
 export interface ShareCard {
   key: string;

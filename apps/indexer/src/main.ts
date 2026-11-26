@@ -83,6 +83,15 @@ connection.onLogs(
 setInterval(safePoll, Number(env.POLL_INTERVAL_MS ?? 15_000));
 setInterval(() => indexer.periodic().catch((e) => log("periodic failed", { error: String(e) })), 60_000);
 setInterval(() => indexer.fullReconcile().catch((e) => log("reconcile failed", { error: String(e) })), 15 * 60_000);
+// the token's dollar price for "≈ $" on the site: the pump.fun curve (one account read), then Jupiter. Mainnet only
+// (a local token has no market); TOKEN_PRICE=on|off overrides.
+const MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
+const pricing = env.TOKEN_PRICE ? env.TOKEN_PRICE === "on" : (await connection.getGenesisHash().catch(() => "")) === MAINNET_GENESIS;
+if (pricing) {
+  const price = () => indexer.refreshPrice().catch((e) => log("price failed", { error: String(e) }));
+  void price();
+  setInterval(price, Number(env.PRICE_INTERVAL_MS ?? 15_000));
+}
 const og = () => indexer.renderOg().catch((e) => log("og failed", { error: String(e) }));
 await og();
 setInterval(og, 60 * 60_000);

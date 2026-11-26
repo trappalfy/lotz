@@ -78,6 +78,9 @@ export interface StatsResponse {
   lockedNow: string;
   /** The token's total supply (base units), null until the indexer has read it. */
   supply: string | null;
+  /** Dollars per whole token (the pump.fun curve, then Jupiter) and when that was read; null until known. */
+  tokenUsd: number | null;
+  priceAt: string | null;
   takeovers: number;
   paused: boolean;
   nextUnlock: { epoch: number; at: string; amount: string } | null;
@@ -141,7 +144,7 @@ export interface MeResponse {
 
 /** Messages on /api/stream (SSE `data:` lines). */
 export type StreamEvent =
-  | { type: "hello" | "board" | "refund" | "close" | "release" | "pause"; board: BoardImagesJson | null; stats: StreamStats | null }
+  | { type: "hello" | "board" | "refund" | "close" | "release" | "pause" | "price"; board: BoardImagesJson | null; stats: StreamStats | null }
   | { type: "buy"; buy: StreamBuy; board: BoardImagesJson; stats: StreamStats };
 
 export interface StreamStats {
@@ -152,6 +155,8 @@ export interface StreamStats {
   freeLotPrice: string;
   paused: boolean;
   supply: string | null;
+  tokenUsd: number | null;
+  priceAt: string | null;
 }
 
 export interface StreamBuy {

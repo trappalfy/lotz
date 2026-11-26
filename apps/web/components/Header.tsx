@@ -7,6 +7,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { TOTAL_LOTS, formatCompact, formatInt, formatTokens, shortAddress } from "@lotz/sdk";
 import { useLotz } from "@/lib/client/lotz-context";
 import type { StatsResponse, StreamStats } from "@/lib/api-types";
+import { marketCap } from "@/lib/client/usd";
 import { useWalletModal } from "./WalletModal";
 import { useSelection } from "./selection";
 import { Star } from "./Logo";
@@ -32,12 +33,14 @@ export function Counters({ className = "" }: { className?: string }) {
   }, [stats]);
   const s = stats ?? initial;
   const dec = info?.tokenDecimals ?? 6;
+  const mcap = marketCap(dec, s);
   return (
     <div className={`num flex items-center gap-5 text-[12px] ${className}`} aria-live="polite">
       <Counter label="LOTS" value={s ? `${formatInt(s.lotsSold)} / ${formatInt(TOTAL_LOTS)}` : "—"} />
       <Counter label="FREE LOT" value={s ? formatTokens(BigInt(s.freeLotPrice), dec) : "—"} />
       <Counter label="LOCKED" value={s ? formatCompact(BigInt(s.totalLocked) - BigInt(s.totalReleased), dec) : "—"} />
       <Counter label="TAKEOVERS" value={s ? formatInt(s.takeovers) : "—"} />
+      {mcap && <Counter label="MCAP" value={mcap} />}
     </div>
   );
 }

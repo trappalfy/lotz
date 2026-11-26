@@ -127,10 +127,11 @@ async function computeBoardView(): Promise<BoardResponse> {
 
 export async function statsView(): Promise<StatsResponse> {
   const p = pool();
-  const [c, epochs, supply] = await Promise.all([
+  const [c, epochs, supply, price] = await Promise.all([
     db.getConfig(p),
     db.getEpochs(p),
     db.kvGet<db.TokenSupply>(p, db.TOKEN_SUPPLY_KEY),
+    db.kvGet<db.TokenPrice>(p, db.TOKEN_PRICE_KEY),
   ]);
   const tier = c ? tierOf(c.lotsSold, c.tierSize) : 0;
   const free = c ? tierPrice(c.basePrice, c.tierMultBps, tier) : 0n;
@@ -145,6 +146,8 @@ export async function statsView(): Promise<StatsResponse> {
     totalReleased: (c?.totalReleased ?? 0n).toString(),
     lockedNow: ((c?.totalLocked ?? 0n) - (c?.totalReleased ?? 0n)).toString(),
     supply: supply?.amount ?? null,
+    tokenUsd: price?.usd ?? null,
+    priceAt: price?.at ?? null,
     takeovers: c?.takeovers ?? 0,
     paused: c?.paused ?? false,
     nextUnlock: next ? { epoch: next.epoch, at: next.unlockAt.toISOString(), amount: next.amount.toString() } : null,
