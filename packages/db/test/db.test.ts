@@ -14,6 +14,10 @@ import {
   getAdsOnDomain,
   rateHit,
   strictSsl,
+  lastModerationId,
+  listen,
+  logModeration,
+  notify,
   type Pool,
 } from "../src";
 
@@ -114,5 +118,61 @@ describe("strictSsl", () => {
     expect(strictSsl("postgres://h/db?channel_binding=require&sslmode=prefer")).toBe("postgres://h/db?channel_binding=require&sslmode=verify-full");
     expect(strictSsl("postgres://127.0.0.1:5433/lotz")).toBe("postgres://127.0.0.1:5433/lotz");
     expect(strictSsl("postgres://h/db?sslmode=disable")).toBe("postgres://h/db?sslmode=disable");
+  });
+});
+
+const until = async (ok: () => boolean, ms = 5_000) => {
+  const t0 = Date.now();
+  while (!ok()) {
+    if (Date.now() - t0 > ms) throw new Error("timed out");
+    await new Promise((r) => setTimeout(r, 20));
+  }
+};
+// what Neon does to every session when it suspends an idle database: "terminating connection due to administrator command"
+const terminate = (where: string, args: unknown[] = []) =>
+  pool.query(`select pg_terminate_backend(pid) from pg_stat_activity where pid <> pg_backend_pid() and ${where}`, args);
+
+describe("connections the server closes", () => {
+  it("listen connects again and keeps delivering", async () => {
+    const got: number[] = [];
+    const connects: boolean[] = [];
+    const errors: unknown[] = [];
+    const l = listen(pool, "lotz_test", (p) => got.push((JSON.parse(p) as { n: number }).n), {
+      onConnect: (again) => connects.push(again),
+      onError: (e) => errors.push(e),
+      retryMs: 50,
+    });
+    await until(() => connects.length === 1);
+    await notify(pool, "lotz_test", { n: 1 });
+    await until(() => got.length === 1);
+
+    await terminate("query = 'listen lotz_test'");
+    await until(() => connects.length === 2);
+    expect(connects).toEqual([false, true]);
+    expect((errors[0] as { code?: string }).code).toBe("57P01");
+
+    await notify(pool, "lotz_test", { n: 2 });
+    await until(() => got.length === 2);
+    expect(got).toEqual([1, 2]);
+    await l.close();
+    await notify(pool, "lotz_test", { n: 3 });
+    await new Promise((r) => setTimeout(r, 200));
+    expect(got).toEqual([1, 2]);
+  });
+
+  it("an idle pooled connection closed by the server is replaced, not fatal", async () => {
+    const errors: Error[] = [];
+    const p = createPool(URL, { onError: (e) => errors.push(e) });
+    const { rows } = await p.query<{ pid: number }>("select pg_backend_pid() as pid");
+    await terminate("pid = $1", [rows[0]!.pid]);
+    await until(() => errors.length === 1);
+    expect((await p.query<{ one: number }>("select 1 as one")).rows[0]!.one).toBe(1);
+    await p.end();
+  });
+
+  it("moderation changes move the last moderation id", async () => {
+    const before = await lastModerationId(pool);
+    await logModeration(pool, "admin", "hide", "ad:1");
+    expect(await lastModerationId(pool)).toBeGreaterThan(before);
   });
 });

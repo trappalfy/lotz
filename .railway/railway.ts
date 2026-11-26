@@ -17,6 +17,8 @@ export default defineRailway(() => {
     start: "pnpm --filter @lotz/indexer start",
     healthcheck: "/health",
     healthcheckTimeout: 300,
+    // restart after any exit, without a retry limit (the default gives up after 10 failures)
+    deploy: { restartPolicyType: "ALWAYS" },
     // one instance only (two would index the same transactions), in US East (Virginia) next to the database
     // (Neon, AWS us-east-1). The key is Railway's region ID; the "us-east" alias is not understood here.
     replicas: { "us-east4-eqdc4a": 1 },

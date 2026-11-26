@@ -9,7 +9,7 @@
  * - HTTP: /health, /stream (live updates for the site), /webhooks/helius.
  */
 import { Connection, PublicKey } from "@solana/web3.js";
-import { createPool, migrate, MODERATION_CHANNEL } from "@lotz/db";
+import { createPool, lastModerationId, listen, migrate, MODERATION_CHANNEL } from "@lotz/db";
 import { screenRaw, screeningFromEnv, warmUp } from "@lotz/moderation";
 import { storageFromEnv } from "@lotz/storage";
 import { Chain } from "./chain";
@@ -27,10 +27,10 @@ const need = (k: string): string => {
 const RPC_URL = need("RPC_URL");
 const programId = new PublicKey(need("PROGRAM_ID"));
 const connection = new Connection(RPC_URL, { commitment: "confirmed", wsEndpoint: env.RPC_WS_URL || undefined });
-const pool = createPool(need("DATABASE_URL"));
-const storage = storageFromEnv();
 const log = (msg: string, extra?: Record<string, unknown>) =>
   console.log(JSON.stringify({ t: new Date().toISOString(), msg, ...extra }));
+const pool = createPool(need("DATABASE_URL"), { onError: (e) => log("database connection closed", { error: e.message }) });
+const storage = storageFromEnv();
 
 await migrate(pool);
 const thresholds = screeningFromEnv();
@@ -87,17 +87,33 @@ const og = () => indexer.renderOg().catch((e) => log("og failed", { error: Strin
 await og();
 setInterval(og, 60 * 60_000);
 
-// moderation changes from the web app
-const listener = await pool.connect();
-await listener.query(`listen ${MODERATION_CHANNEL}`);
-listener.on("notification", (n) => {
-  try {
-    const { adIds } = JSON.parse(n.payload ?? "{}") as { adIds?: number[] };
-    indexer.onModeration(adIds ?? []).catch((e) => log("moderation failed", { error: String(e) }));
-  } catch {
-    /* ignore malformed payloads */
-  }
-});
+// moderation changes from the web app. Neon closes the connection whenever it suspends an idle database; listen()
+// connects again, and if anything was moderated in the meantime (its notification is lost), every ad is rechecked.
+let moderationSeen = -1;
+listen(
+  pool,
+  MODERATION_CHANNEL,
+  (payload) => {
+    try {
+      const { adIds } = JSON.parse(payload) as { adIds?: number[] };
+      indexer.onModeration(adIds ?? []).catch((e) => log("moderation failed", { error: String(e) }));
+    } catch {
+      /* ignore malformed payloads */
+    }
+  },
+  {
+    onConnect: (again) => {
+      lastModerationId(pool)
+        .then((id) => {
+          const missed = again && id !== moderationSeen;
+          moderationSeen = id;
+          if (missed) return indexer.resyncModeration();
+        })
+        .catch((e) => log("moderation catch-up failed", { error: String(e) }));
+    },
+    onError: (e) => log("moderation listener reconnecting", { error: String((e as Error)?.message ?? e) }),
+  },
+);
 
 // health, live stream for browsers, Helius webhook
 const port = Number(env.PORT || env.INDEXER_PORT || 4100);

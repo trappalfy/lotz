@@ -436,6 +436,11 @@ export class Indexer {
     }
   }
 
+  /** After moderation notifications may have been missed: recheck every live ad. */
+  resyncModeration(): Promise<void> {
+    return this.onModeration([...this.ads.keys()]);
+  }
+
   /** After the web app changed moderation: reload the block list and the given ads, repaint them. */
   onModeration(adIds: number[]): Promise<void> {
     return this.enqueue(async () => {

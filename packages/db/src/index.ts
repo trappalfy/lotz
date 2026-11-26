@@ -18,10 +18,101 @@ export const MODERATION_CHANNEL = "lotz_moderation";
 
 export function createPool(
   connectionString = process.env.DATABASE_URL,
-  opts: { max?: number; idleTimeoutMillis?: number } = {},
+  opts: { max?: number; idleTimeoutMillis?: number; onError?: (e: Error) => void } = {},
 ): Pool {
   if (!connectionString) throw new Error("DATABASE_URL is not set");
-  return new pg.Pool({ connectionString: strictSsl(connectionString), max: opts.max ?? 10, idleTimeoutMillis: opts.idleTimeoutMillis ?? 10_000 });
+  const pool = new pg.Pool({ connectionString: strictSsl(connectionString), max: opts.max ?? 10, idleTimeoutMillis: opts.idleTimeoutMillis ?? 10_000 });
+  // The server may close an idle connection (Neon suspends an idle database; restarts end every session). The pool
+  // drops that connection and opens a new one for the next query; unheard, the error would end the process.
+  pool.on("error", opts.onError ?? ((e) => console.warn(`database connection closed: ${e.message}`)));
+  return pool;
+}
+
+export type Listening = { close(): Promise<void> };
+
+/**
+ * Keeps a LISTEN connection open on `channel`. When the server closes it (see createPool), this connects again
+ * after `retryMs`, doubling the pause up to `maxRetryMs` while the database cannot be reached, and listens again.
+ * Notifications sent while disconnected are lost: `onConnect(again)` runs each time listening starts, so the caller
+ * can catch up when `again` is true.
+ */
+export function listen(
+  pool: Pool,
+  channel: string,
+  onPayload: (payload: string) => void,
+  opts: { onConnect?: (again: boolean) => void; onError?: (e: unknown) => void; retryMs?: number; maxRetryMs?: number } = {},
+): Listening {
+  if (!/^[a-z_][a-z0-9_]*$/.test(channel)) throw new Error(`bad channel name: ${channel}`);
+  const retryMs = opts.retryMs ?? 1_000;
+  const maxRetryMs = opts.maxRetryMs ?? 30_000;
+  let closed = false;
+  let current: { client: Client; done: boolean } | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let delay = retryMs;
+  let connects = 0;
+
+  const retry = () => {
+    if (closed) return;
+    timer = setTimeout(() => void start(), delay);
+    delay = Math.min(delay * 2, maxRetryMs);
+  };
+  const start = async () => {
+    timer = undefined;
+    if (closed) return;
+    let client: Client;
+    try {
+      client = await pool.connect();
+    } catch (e) {
+      opts.onError?.(e);
+      return retry();
+    }
+    const conn = { client, done: false };
+    const drop = (e: unknown) => {
+      if (conn.done) return;
+      conn.done = true;
+      if (current === conn) current = null;
+      client.release(true); // destroy it, never hand a broken connection back to the pool
+      opts.onError?.(e);
+      retry();
+    };
+    client.on("error", drop);
+    client.on("end", () => drop(new Error("connection ended")));
+    client.on("notification", (n) => {
+      if (n.channel !== channel || n.payload == null) return;
+      try {
+        onPayload(n.payload);
+      } catch (e) {
+        opts.onError?.(e);
+      }
+    });
+    try {
+      await client.query(`listen ${channel}`);
+    } catch (e) {
+      return drop(e);
+    }
+    if (conn.done) return;
+    if (closed) {
+      conn.done = true;
+      client.release(true);
+      return;
+    }
+    current = conn;
+    delay = retryMs;
+    opts.onConnect?.(connects++ > 0);
+  };
+
+  void start();
+  return {
+    async close() {
+      closed = true;
+      clearTimeout(timer);
+      const conn = current;
+      current = null;
+      if (!conn || conn.done) return;
+      conn.done = true;
+      conn.client.release(true);
+    },
+  };
 }
 
 /**
@@ -552,6 +643,12 @@ export async function addBlockedDomain(db: Q, domain: string, note: string | nul
 
 export async function removeBlockedDomain(db: Q, domain: string): Promise<void> {
   await db.query("delete from blocked_domains where domain=$1", [domain]);
+}
+
+/** Id of the latest moderation_log row (0 when empty): changes whenever moderation changes. */
+export async function lastModerationId(db: Q): Promise<number> {
+  const { rows } = await db.query<{ id: string }>("select coalesce(max(id), 0)::text as id from moderation_log");
+  return Number(rows[0]!.id);
 }
 
 export async function logModeration(db: Q, admin: string, action: string, target: string, note?: string): Promise<void> {
