@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { LotzInstructions } from "@lotz/sdk";
-import type { BoardResponse, DeploymentInfo, StreamEvent, StreamStats } from "../api-types";
+import type { BoardResponse, DeploymentInfo, StatsResponse, StreamEvent, StreamStats } from "../api-types";
 import { BoardData } from "./board-data";
 import { bus } from "./bus";
 
@@ -32,6 +32,8 @@ export function LotzProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<StreamStats | null>(null);
   const [tick, setTick] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Whether the live stream is connected; while it is not, the counters and the board are polled instead. */
+  const streamUp = useRef(false);
 
   useEffect(() => {
     fetch("/api/config")
@@ -61,7 +63,11 @@ export function LotzProvider({ children }: { children: ReactNode }) {
     };
     const open = () => {
       es = new EventSource(streamUrl);
+      es.onopen = () => {
+        streamUp.current = true;
+      };
       es.onmessage = (m) => {
+        streamUp.current = true;
         let msg: StreamEvent;
         try {
           msg = JSON.parse(m.data) as StreamEvent;
@@ -78,8 +84,9 @@ export function LotzProvider({ children }: { children: ReactNode }) {
         scheduleRefresh();
       };
       es.onerror = () => {
-        // EventSource retries by itself; after a hard close, reopen.
-        if (es?.readyState === EventSource.CLOSED && !closed) setTimeout(open, 3_000);
+        streamUp.current = false;
+        // EventSource retries by itself; after a hard close, reopen (slowly: the poll below covers the gap).
+        if (es?.readyState === EventSource.CLOSED && !closed) setTimeout(open, 15_000);
       };
     };
     open();
@@ -88,6 +95,41 @@ export function LotzProvider({ children }: { children: ReactNode }) {
       es?.close();
     };
   }, [refreshBoard, streamUrl]);
+
+  // Without the live stream (its server unreachable), poll the counters every 10 s and reload the board when they
+  // change, so purchases still show up within seconds.
+  useEffect(() => {
+    if (!info) return;
+    let last = "";
+    let alive = true;
+    const t = setInterval(() => {
+      if (streamUp.current || document.hidden) return;
+      void fetch("/api/stats", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<StatsResponse>) : null))
+        .then((s) => {
+          if (!s || !alive) return;
+          setStats({
+            lotsSold: s.lotsSold,
+            takeovers: s.takeovers,
+            totalLocked: s.totalLocked,
+            totalReleased: s.totalReleased,
+            freeLotPrice: s.freeLotPrice,
+            paused: s.paused,
+            supply: s.supply,
+            tokenUsd: s.tokenUsd,
+            priceAt: s.priceAt,
+          });
+          const key = `${s.lotsSold}/${s.takeovers}/${s.totalLocked}/${s.paused}`;
+          if (last && key !== last) void refreshBoard();
+          last = key;
+        })
+        .catch(() => {});
+    }, 10_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [info, refreshBoard]);
 
   const connection = useMemo(() => {
     if (!info) return null;

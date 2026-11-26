@@ -94,7 +94,9 @@ export async function createLaunchTable(o: {
   send: (ixs: TransactionInstruction[]) => Promise<string>;
   log?: Log;
 }): Promise<AddressLookupTableAccount> {
-  const slot = await o.connection.getSlot("finalized");
+  // must be a slot the node already has in its recent history: some RPCs report "finalized" right at the tip, which
+  // the lookup table program then refuses (invalid instruction data), so stay a few slots back
+  const slot = Math.max(0, (await o.connection.getSlot("confirmed")) - 10);
   const [create, address] = AddressLookupTableProgram.createLookupTable({ authority: o.admin.publicKey, payer: o.admin.publicKey, recentSlot: slot });
   const created = await o.send([create]);
   o.log?.(`lookup table ${address.toBase58()}: ${created}`);
