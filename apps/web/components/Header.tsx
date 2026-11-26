@@ -37,7 +37,8 @@ export function Counters({ className = "" }: { className?: string }) {
   return (
     <div className={`num flex items-center gap-5 text-[12px] ${className}`} aria-live="polite">
       <Counter label="LOTS" value={s ? `${formatInt(s.lotsSold)} / ${formatInt(TOTAL_LOTS)}` : "—"} />
-      <Counter label="FREE LOT" value={s ? formatTokens(BigInt(s.freeLotPrice), dec) : "—"} />
+      {/* before launch there is no price yet (no config on chain): a dash, not a 0 */}
+      <Counter label="FREE LOT" value={s && s.freeLotPrice !== "0" ? formatTokens(BigInt(s.freeLotPrice), dec) : "—"} />
       <Counter label="LOCKED" value={s ? formatCompact(BigInt(s.totalLocked) - BigInt(s.totalReleased), dec) : "—"} />
       <Counter label="TAKEOVERS" value={s ? formatInt(s.takeovers) : "—"} />
       {mcap && <Counter label="MCAP" value={mcap} />}
