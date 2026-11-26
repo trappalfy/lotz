@@ -48,7 +48,6 @@ export function TheLock() {
   }, [tick, live?.totalReleased]);
 
   const lockedNow = stats ? BigInt(stats.lockedNow) : 0n;
-  const streamflowLocked = BigInt(stats?.streamflowLocked ?? "0");
   const epochStart = (k: number) => (stats?.launchTs ?? 0) + k * (stats?.epochLen ?? 604_800);
 
   return (
@@ -73,31 +72,6 @@ export function TheLock() {
           note={stats?.nextUnlock ? `${formatTokens(BigInt(stats.nextUnlock.amount), dec)} tokens, week ${stats.nextUnlock.epoch + 1}` : "Nothing locked yet"}
         />
       </div>
-
-      {stats?.supply && BigInt(stats.supply) > 0n && (
-        <p className="mt-6 max-w-[640px] text-[15px] leading-relaxed">
-          Supply locked in total, with Streamflow:{" "}
-          <span className="num font-semibold">{formatShare(lockedNow + streamflowLocked, BigInt(stats.supply))}</span>. The board{" "}
-          <span className="num">{formatShare(lockedNow, BigInt(stats.supply))}</span>, Streamflow{" "}
-          <span className="num">{formatShare(streamflowLocked, BigInt(stats.supply))}</span>
-          {stats.streamflow.length > 0 ? ` in ${stats.streamflow.length} contract${stats.streamflow.length === 1 ? "" : "s"} nobody can cancel.` : "."}
-        </p>
-      )}
-      {stats && stats.streamflow.length > 0 && (
-        <div className="panel mt-4 max-w-[640px] p-5 text-[14px]">
-          <h3 className="text-[15px] font-semibold">Locked on Streamflow</h3>
-          <div className="mt-3">
-            {stats.streamflow.slice(0, 20).map((c) => (
-              <AddressRow
-                key={c.address}
-                label={`${formatTokens(BigInt(c.locked), dec)} until ${date(new Date(c.unlockAt * 1000).toISOString())}`}
-                address={c.address}
-                cluster={cluster}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="panel overflow-x-auto p-5">

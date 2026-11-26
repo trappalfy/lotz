@@ -4,7 +4,7 @@ import type { Server } from "node:http";
 import { createHttpServer } from "../src/http";
 import type { StreamMessage, StreamStats } from "../src/indexer";
 
-const stats: StreamStats = { lotsSold: 3, takeovers: 1, totalLocked: "10", totalReleased: "0", freeLotPrice: "5", paused: false, supply: "1000", tokenUsd: null, priceAt: null, streamflowLocked: null };
+const stats: StreamStats = { lotsSold: 3, takeovers: 1, totalLocked: "10", totalReleased: "0", freeLotPrice: "5", paused: false, supply: "1000", tokenUsd: null, priceAt: null };
 const board = { version: 7, x1: "board/1x-7.png", x2: "board/2x-7.png", tiles: ["board/t/0-0-7.png"], og: null, renderedAt: "2026-11-21T00:00:00Z" };
 const subscribers = new Set<(m: StreamMessage) => void>();
 const signatures: string[] = [];

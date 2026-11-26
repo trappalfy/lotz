@@ -757,14 +757,6 @@ export interface TokenPrice {
 }
 export const TOKEN_PRICE_KEY = "token_price";
 
-/** Tokens locked on Streamflow for the token (see the indexer's streamflow.ts), refreshed every minute. */
-export interface StreamflowLocked {
-  total: string;
-  contracts: { address: string; sender: string; recipient: string; locked: string; unlockAt: number }[];
-  at: string;
-}
-export const STREAMFLOW_LOCKED_KEY = "streamflow_locked";
-
 /** The share card for posts (share of the supply in the lock), at a fixed storage key. */
 export interface ShareCard {
   key: string;

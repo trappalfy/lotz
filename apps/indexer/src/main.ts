@@ -91,10 +91,6 @@ if (pricing) {
   const price = () => indexer.refreshPrice().catch((e) => log("price failed", { error: String(e) }));
   void price();
   setInterval(price, Number(env.PRICE_INTERVAL_MS ?? 15_000));
-  // tokens locked on Streamflow, counted with the board's lock in "locked % of supply"
-  const streamflow = () => indexer.refreshStreamflow().catch((e) => log("streamflow failed", { error: String(e) }));
-  void streamflow();
-  setInterval(streamflow, 60_000);
 }
 const og = () => indexer.renderOg().catch((e) => log("og failed", { error: String(e) }));
 await og();
